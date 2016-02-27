@@ -1,21 +1,21 @@
 [
   {
-    "name": "Person",
+    "modelName": "Person",
     "fields": [
       {
-        "name": "id",
+        "fieldName": "id",
         "typeName": "GraphQLID",
         "nullable": false,
         "list": false
       },
       {
-        "name": "firstName",
+        "fieldName": "firstName",
         "typeName": "String",
         "nullable": true,
         "list": false
       },
       {
-        "name": "lastName",
+        "fieldName": "lastName",
         "typeName": "String",
         "nullable": false,
         "list": false
@@ -23,25 +23,31 @@
     ]
   },
   {
-    "name": "Book",
+    "modelName": "Book",
     "fields": [
       {
-        "name": "id",
+        "fieldName": "id",
         "typeName": "GraphQLID",
         "nullable": false,
         "list": false
       },
       {
-        "name": "title",
+        "fieldName": "title",
         "typeName": "String",
         "nullable": true,
         "list": false
       },
       {
-        "name": "author",
+        "fieldName": "author",
         "typeName": "Person",
         "nullable": false,
         "list": false
+      },
+      {
+        "fieldName": "coauthors",
+        "typeName": "Person",
+        "nullable": false,
+        "list": true
       }
     ]
   }

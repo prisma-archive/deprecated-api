@@ -11,37 +11,40 @@ import {
 } from 'graphql'
 
 import {
-  mapToObject
-} from '../lib/utils'
+  mapArrayToObject
+} from '../utils/array.js'
 
 import type {
-  ClientSchema
-} from './types'
+  ClientSchema,
+  GraphQLFields
+} from './types.js'
 
-function mapClientType (typeName: string) {
+function parseClientType (typeName: string) {
   switch (typeName) {
     case 'String': return GraphQLString
     case 'Boolean': return GraphQLBoolean
     case 'Int': return GraphQLInt
     case 'Float': return GraphQLFloat
     case 'GraphQLID': return GraphQLID
-    default: return { __isUserType: true, typeName }
+    default: return { __isRelation: true, typeName }
   }
 }
 
-export const generateObjectType = (clientSchema: ClientSchema, NodeInterfaceType: GraphQLInterfaceType): GraphQLObjectType => {
-  const graphQLFields = mapToObject(
+export function generateObjectType (
+  clientSchema: ClientSchema,
+  NodeInterfaceType: GraphQLInterfaceType
+): GraphQLObjectType {
+  const graphQLFields: GraphQLFields = mapArrayToObject(
     clientSchema.fields,
-    (field) => field.name,
+    (field) => field.fieldName,
     (field) => ({
-      type: mapClientType(field.typeName),
-      // TODO check me
-      resolve: (obj) => obj[field.name]
+      type: parseClientType(field.typeName),
+      resolve: (obj) => obj[field.fieldName]
     })
   )
 
   return new GraphQLObjectType({
-    name: `${clientSchema.name}`,
+    name: `${clientSchema.modelName}`,
     fields: graphQLFields,
     interfaces: [ NodeInterfaceType ]
   })

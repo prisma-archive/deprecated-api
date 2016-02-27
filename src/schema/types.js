@@ -1,15 +1,18 @@
 import {
-  GraphQLObjectType,
-  GraphQLBoolean
+  GraphQLObjectType
 } from 'graphql'
 
+export type GraphQLFields = {
+  [key: string]: GraphQLObjectType
+}
+
 export type ClientSchema = {
-  name: string,
+  modelName: string,
   fields: Array<ClientSchemaField>
 }
 
 export type ClientSchemaField = {
-  name: string,
+  fieldName: string,
   typeName: string,
   nullable: boolean,
   list: boolean

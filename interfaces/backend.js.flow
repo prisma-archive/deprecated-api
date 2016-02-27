@@ -1,0 +1,64 @@
+import {
+  GraphQLFieldConfigArgumentMap
+} from 'graphql'
+
+type BackendData = {
+  id: string,
+  [key: string]: string | number | boolean | BackendData
+}
+
+type InputData = {
+  [key: string]: string | number | boolean
+}
+
+type ClientSchemaField = {
+  fieldName: string,
+  typeName: string,
+  nullable: boolean,
+  list: boolean
+}
+
+declare interface Backend {
+  // schema updates
+  addModel(modelName: string): Promise<boolean>;
+
+  deleteModel(modelName: string): Promise<boolean>;
+
+  addFieldToModel(field: ClientSchemaField, modelName: string): Promise<boolean>;
+
+  deleteFieldFromModel(fieldName: string, modelName: string): Promise<boolean>;
+
+  // queries
+  node(id: string): Promise<BackendData>;
+
+  allNodesByType(
+    type: string,
+    args: GraphQLFieldConfigArgumentMap
+  ): Promise<Array<BackendData>>;
+
+  allNodesByRelation(
+    parentId: string,
+    relationFieldName: string,
+    args: GraphQLFieldConfigArgumentMap
+  ): Promise<Array<BackendData>>;
+
+  // mutations
+  createNode(inputData: InputData): Promise<BackendData>;
+
+  updateNode(id: string, inputData: InputData): Promise<BackendData>;
+
+  deleteNode(id: string): Promise<boolean>;
+
+  associateNodes(
+    childId: string,
+    parentId: string,
+    relationFieldName: string
+  ): Promise<boolean>;
+
+  disassociateNodes(
+    childId: string,
+    parentId: string,
+    relationFieldName: string
+  ): Promise<boolean>;
+}
+

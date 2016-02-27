@@ -2,10 +2,12 @@
 .*/node_modules/flow-bin/.*
 .*\(is-my-json-valid\|mock\|lib\|iconv-lite\|url-regex\|json5\|spdx-license-ids\|binary-extensions\|spdx-exceptions\|resolve\|builtin-modules\).*\.json
 .*/node_modules/babel-.*
+./examples/.*
 
 [include]
 
 [libs]
+./interfaces/
 
 [options]
 module.system=haste
