@@ -1,0 +1,48 @@
+[
+  {
+    "name": "Person",
+    "fields": [
+      {
+        "name": "id",
+        "typeName": "GraphQLID",
+        "nullable": false,
+        "list": false
+      },
+      {
+        "name": "firstName",
+        "typeName": "String",
+        "nullable": true,
+        "list": false
+      },
+      {
+        "name": "lastName",
+        "typeName": "String",
+        "nullable": false,
+        "list": false
+      }
+    ]
+  },
+  {
+    "name": "Book",
+    "fields": [
+      {
+        "name": "id",
+        "typeName": "GraphQLID",
+        "nullable": false,
+        "list": false
+      },
+      {
+        "name": "title",
+        "typeName": "String",
+        "nullable": true,
+        "list": false
+      },
+      {
+        "name": "author",
+        "typeName": "Person",
+        "nullable": false,
+        "list": false
+      }
+    ]
+  }
+]
