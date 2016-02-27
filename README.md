@@ -1,1 +1,1 @@
-# api [![Slack Status](https://slack.graph.cool/badge.svg)](https://slack.graph.cool)
+# api [![Slack Status](http://slack.graph.cool/badge.svg)](http://slack.graph.cool)
