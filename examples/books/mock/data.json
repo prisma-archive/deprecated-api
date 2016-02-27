@@ -1,0 +1,26 @@
+{
+  "Person": {
+    "cil5cizq60000j00jyntjokov": {
+      "id": "cil5cizq60000j00jyntjokov",
+      "firstName": "Joanne",
+      "lastName": "Rowling"
+    },
+    "cil5clesy0001j00jup6vldlp": {
+      "id": "cil5clesy0001j00jup6vldlp",
+      "firstName": "John Ronald Reuel",
+      "lastName": "Tolkien"
+    }
+  },
+  "Book": {
+    "cil5cmghi0002j00jx7su5fe4": {
+      "id": "cil5cmghi0002j00jx7su5fe4",
+      "title": "Harry Potter",
+      "authorID": "cil5cizq60000j00jyntjokov"
+    },
+    "cil5covw50003j00jedvys0tp": {
+      "id": "cil5covw50003j00jedvys0tp",
+      "title": "The Lord of the Rings",
+      "authorID": "cil5clesy0001j00jup6vldlp"
+    }
+  }
+}

@@ -34,7 +34,7 @@
       {
         "fieldName": "title",
         "typeName": "String",
-        "nullable": true,
+        "nullable": false,
         "list": false
       },
       {
@@ -42,12 +42,6 @@
         "typeName": "Person",
         "nullable": false,
         "list": false
-      },
-      {
-        "fieldName": "coauthors",
-        "typeName": "Person",
-        "nullable": false,
-        "list": true
       }
     ]
   }

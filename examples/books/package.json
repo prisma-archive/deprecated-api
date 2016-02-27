@@ -2,12 +2,11 @@
   "private": true,
   "scripts": {
     "start": "babel-node server.js",
-    "preinstall": "npm install ../.."
+    "preinstall": "npm install --ignore-scripts ../.."
   },
   "dependencies": {
     "express": "^4.13.4",
-    "express-graphql": "git://github.com/sorenbs/express-graphql.git#master",
-    "graphql": "^0.4.18"
+    "express-graphql": "git://github.com/sorenbs/express-graphql.git#master"
   },
   "devDependencies": {
     "babel-cli": "^6.5.1",
