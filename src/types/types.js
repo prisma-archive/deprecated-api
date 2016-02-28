@@ -60,6 +60,20 @@ function generateObjectType (
   })
 }
 
+function generateObjectMutationInputArguments (
+  clientSchema: ClientSchema
+): GraphQLObjectType {
+  const scalarFields = clientSchema.fields.filter(field => !parseClientType(field.typeName).__isRelation);
+  
+  return mapArrayToObject(
+    scalarFields,
+    (field) => field.fieldName,
+    (field) => ({
+      type: parseClientType(field.typeName)
+    })
+  )
+}
+
 function injectRelationships (
   objectType: GraphQLObjectType,
   clientSchema: ClientSchema,
@@ -143,7 +157,8 @@ export function createTypes (clientSchemas: Array<ClientSchema>): ClientTypes {
           }
         })
       })
-      return { clientSchema, objectType, connectionType, edgeType }
+      const mutationInputArguments = generateObjectMutationInputArguments(clientSchema)
+      return { clientSchema, objectType, connectionType, edgeType, mutationInputArguments }
     },
     clientTypes
   )

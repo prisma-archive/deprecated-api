@@ -2,22 +2,19 @@ import express from 'express'
 import graphqlHTTP from 'express-graphql'
 import { graphql } from 'graphql'
 import { introspectionQuery } from 'graphql/utilities'
- import { generateSchema } from 'graphcool-api'
-//import { generateSchema } from '../../src'
+// import { generateSchema } from 'graphcool-api'
+import { generateSchema } from '../../src'
 import clientSchemas from './mock/schemas.json'
 import database from './mock/data.json'
+import cuid from 'cuid'
 
+const getNode = (type, id) => (
+  database[type][id]
+    ? Promise.resolve(database[type][id])
+    : Promise.reject(`no ${type} exists with id ${id}`)
+)
 const backend = {
-  node: (id) => (
-    new Promise((resolve, reject) => {
-      for (const modelName in database) {
-        if (database[modelName][id]) {
-          return resolve(database[modelName][id])
-        }
-      }
-      reject()
-    })
-  ),
+  node: getNode,
   allNodesByType: (type, args) => (
     new Promise((resolve, reject) => {
       if (database[type]) {
@@ -28,6 +25,35 @@ const backend = {
   ),
   allNodesByRelation: (parentId, relationFieldName, args) => (
     new Promise((resolve, reject) => resolve([]))
+  ),
+
+  createNode: (type, node) => (
+    new Promise((resolve, reject) => {
+      node.id = cuid()
+      database[type][node.id] = node;
+
+      resolve(node)
+    })
+  ),
+  updateNode: (type, id, newNode) => (
+    getNode(type, id).then(node => {
+      Object.keys(newNode).forEach(key => {
+        if(key != "clientMutationId"){
+          node[key] = newNode[key]
+        }
+      })
+      database[type][id] = node;
+
+      return node
+    })
+  ),
+  deleteNode: (type, id) => (
+    new Promise((resolve, reject) => {
+      const node = database[type][id]
+      delete database[type][id];
+
+      resolve(node)
+    })
   )
 }
 
