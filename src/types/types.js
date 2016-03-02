@@ -63,8 +63,8 @@ function generateObjectType (
 function generateObjectMutationInputArguments (
   clientSchema: ClientSchema
 ): GraphQLObjectType {
-  const scalarFields = clientSchema.fields.filter(field => !parseClientType(field.typeName).__isRelation);
-  
+  const scalarFields = clientSchema.fields.filter((field) => !parseClientType(field.typeName).__isRelation)
+
   return mapArrayToObject(
     scalarFields,
     (field) => field.fieldName,

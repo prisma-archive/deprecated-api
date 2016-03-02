@@ -1,13 +1,14 @@
 /* @flow */
 
 import {
-  GraphQLBoolean,
   GraphQLID,
   GraphQLNonNull
 } from 'graphql'
 
 import {
-  mutationWithClientMutationId
+  mutationWithClientMutationId,
+  cursorForObjectInConnection,
+  offsetToCursor
 } from 'graphql-relay'
 
 import type {
@@ -24,11 +25,22 @@ export function createMutationEndpoints (
     // create node
     mutationFields[`create${modelName}`] = mutationWithClientMutationId({
       name: `Create${modelName}`,
-      outputFields: { node: {type: clientTypes[modelName].objectType} },
+      outputFields: {
+        node: {
+          type: clientTypes[modelName].objectType
+        },
+        edge: {
+          type: clientTypes[modelName].edgeType,
+          resolve: (root, args, { rootValue: { backend } }) => backend.allNodesByType(modelName)
+          .then((allNodes) => ({
+            cursor: offsetToCursor(0), // todo: do we sort ascending or descending?
+            node: root.node
+          }))
+        }
+      },
       inputFields: clientTypes[modelName].mutationInputArguments,
       mutateAndGetPayload: (node, { rootValue: { backend } }) => {
-        
-        return backend.createNode(modelName, node).then(node => ({node}))
+        return backend.createNode(modelName, node).then((node) => ({node}))
       }
     })
 
@@ -36,22 +48,39 @@ export function createMutationEndpoints (
     // todo: make id input argument NOT NULL
     mutationFields[`update${modelName}`] = mutationWithClientMutationId({
       name: `Update${modelName}`,
-      outputFields: { node: {type: clientTypes[modelName].objectType} },
+      outputFields: {
+        node: {
+          type: clientTypes[modelName].objectType
+        },
+        edge: {
+          type: clientTypes[modelName].edgeType,
+          resolve: (root, { rootValue: { backend } }) => ({
+            cursor: cursorForObjectInConnection(backend.allNodesByType(modelName), root.node),
+            node: root.node
+          })
+        }
+      },
       inputFields: clientTypes[modelName].mutationInputArguments,
       mutateAndGetPayload: (node, { rootValue: { backend } }) => {
-        
-        return backend.updateNode(modelName, node.id, node).then(node => ({node}))
+        return backend.updateNode(modelName, node.id, node).then((node) => ({node}))
       }
     })
 
     // delete node
     mutationFields[`delete${modelName}`] = mutationWithClientMutationId({
       name: `Delete${modelName}`,
-      outputFields: { node: {type: clientTypes[modelName].objectType} },
-      inputFields: { id: {type: new GraphQLNonNull(GraphQLID)}},
+      outputFields: {
+        node: {
+          type: clientTypes[modelName].objectType
+        }
+      },
+      inputFields: {
+        id: {
+          type: new GraphQLNonNull(GraphQLID)
+        }
+      },
       mutateAndGetPayload: (node, { rootValue: { backend } }) => {
-        
-        return backend.deleteNode(modelName, node.id).then(node => ({node}))
+        return backend.deleteNode(modelName, node.id).then((node) => ({node}))
       }
     })
   }

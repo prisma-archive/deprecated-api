@@ -32,7 +32,7 @@ export function createQueryEndpoints (
         }
       },
       resolve: (_, args, { rootValue: { backend } }) => (
-        backend.node(modelName,args.id)
+        backend.node(modelName, args.id)
       )
     }
 
