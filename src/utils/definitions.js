@@ -1,7 +1,8 @@
 /* @flow */
 
 import {
-  GraphQLObjectType
+  GraphQLObjectType,
+  GraphQLInterfaceType
 } from 'graphql'
 
 export type ClientTypes = {
@@ -12,6 +13,12 @@ export type ClientTypes = {
     connectionType: GraphQLObjectType,
     clientSchema: ClientSchema
   }
+}
+
+export type AllTypes = {
+  clientTypes: ClientTypes,
+  NodeInterfaceType: GraphQLInterfaceType,
+  viewerType: GraphQLObjectType
 }
 
 export type GraphQLFields = {

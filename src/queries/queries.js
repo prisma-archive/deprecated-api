@@ -2,25 +2,20 @@
 
 import {
   GraphQLNonNull,
-  GraphQLID,
-  GraphQLObjectType
+  GraphQLID
 } from 'graphql'
 
-import {
-  connectionArgs,
-  connectionFromArray
-} from 'graphql-relay'
-
 import type {
-  ClientTypes,
+  AllTypes,
   GraphQLFields
 } from '../utils/definitions.js'
 
 export function createQueryEndpoints (
-  clientTypes: ClientTypes
+  input: AllTypes
 ): GraphQLFields {
   const queryFields = {}
-  const viewerFields = {}
+  const clientTypes = input.clientTypes
+  const viewerType = input.viewerType
 
   for (const modelName in clientTypes) {
     // query single model by id
@@ -35,33 +30,13 @@ export function createQueryEndpoints (
         backend.node(modelName, args.id)
       )
     }
-
-    // query connection for model
-    // curerntly relay does not support connections on the root query. They will fix this eventually
-    // adding a viewer node is the suggested workaround https://github.com/facebook/relay/issues/112
-    viewerFields[`all${modelName}s`] = {
-      type: clientTypes[modelName].connectionType,
-      args: connectionArgs,
-      resolve: (_, args, { rootValue: { backend } }) => (
-        backend.allNodesByType(modelName, args)
-          .then((array) => {
-            const { edges, pageInfo } = connectionFromArray(array, args)
-            return {
-              edges,
-              pageInfo,
-              totalCount: 0
-            }
-          })
-      )
-    }
   }
 
   queryFields['viewer'] = {
-    type: new GraphQLObjectType({
-      name: 'Viewer',
-      fields: viewerFields
-    }),
-    resolve: () => ({})
+    type: viewerType,
+    resolve: (_, args, { rootValue: { backend } }) => (
+      backend.user()
+    )
   }
 
   return queryFields

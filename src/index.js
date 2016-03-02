@@ -19,12 +19,12 @@ import {
 
 import type {
   ClientSchema,
-  ClientTypes
+  AllTypes
 } from './utils/definitions.js'
 
 export function generateSchema (clientSchemas: Array<ClientSchema>): GraphQLSchema {
   // create types from client schemas
-  const clientTypes: ClientTypes = createTypes(clientSchemas)
+  const clientTypes: AllTypes = createTypes(clientSchemas)
 
   // generate query endpoints
   const queryFields = createQueryEndpoints(clientTypes)

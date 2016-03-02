@@ -25,6 +25,7 @@ import type {
   ClientSchema,
   ClientSchemaField,
   ClientTypes,
+  AllTypes,
   GraphQLFields
 } from '../utils/definitions.js'
 
@@ -127,9 +128,10 @@ function wrapWithNonNull (
     })
 }
 
-export function createTypes (clientSchemas: Array<ClientSchema>): ClientTypes {
+export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
   const clientTypes: ClientTypes = {}
 
+  // todo: implement resolve function for node interface. Possibly using nodeDefinitions from graphql-relay
   const NodeInterfaceType = new GraphQLInterfaceType({
     name: 'NodeInterface',
     fields: () => ({
@@ -180,5 +182,32 @@ export function createTypes (clientSchemas: Array<ClientSchema>): ClientTypes {
     )
   }
 
-  return clientTypes
+  const viewerFields = {}
+  for (const modelName in clientTypes) {
+    viewerFields[`all${modelName}s`] = {
+      type: clientTypes[modelName].connectionType,
+      args: connectionArgs,
+      resolve: (_, args, { rootValue: { backend } }) => (
+        backend.allNodesByType(modelName, args)
+          .then((array) => {
+            const { edges, pageInfo } = connectionFromArray(array, args)
+            return {
+              edges,
+              pageInfo,
+              totalCount: 0
+            }
+          })
+      )
+    }
+  }
+
+  viewerFields.id = { type: GraphQLID }
+
+  const viewerType = new GraphQLObjectType({
+    name: 'Viewer',
+    fields: viewerFields,
+    interfaces: [NodeInterfaceType]
+  })
+
+  return {clientTypes, NodeInterfaceType, viewerType}
 }

@@ -12,14 +12,16 @@ import {
 } from 'graphql-relay'
 
 import type {
-  ClientTypes,
-  GraphQLFields
+  GraphQLFields,
+  AllTypes
 } from '../utils/definitions.js'
 
 export function createMutationEndpoints (
-  clientTypes: ClientTypes
+  input: AllTypes
 ): GraphQLFields {
   const mutationFields = {}
+  const clientTypes = input.clientTypes
+  const viewerType = input.viewerType
 
   for (const modelName in clientTypes) {
     // create node
@@ -29,12 +31,19 @@ export function createMutationEndpoints (
         node: {
           type: clientTypes[modelName].objectType
         },
+        viewer: {
+          type: viewerType,
+          resolve: (_, args, { rootValue: { backend } }) => (
+            backend.user()
+          )
+        },
         edge: {
           type: clientTypes[modelName].edgeType,
           resolve: (root, args, { rootValue: { backend } }) => backend.allNodesByType(modelName)
           .then((allNodes) => ({
             cursor: offsetToCursor(0), // todo: do we sort ascending or descending?
-            node: root.node
+            node: root.node,
+            viewer: backend.user()
           }))
         }
       },
@@ -51,6 +60,12 @@ export function createMutationEndpoints (
       outputFields: {
         node: {
           type: clientTypes[modelName].objectType
+        },
+        viewer: {
+          type: viewerType,
+          resolve: (_, args, { rootValue: { backend } }) => (
+            backend.user()
+          )
         },
         edge: {
           type: clientTypes[modelName].edgeType,
@@ -72,6 +87,12 @@ export function createMutationEndpoints (
       outputFields: {
         node: {
           type: clientTypes[modelName].objectType
+        },
+        viewer: {
+          type: viewerType,
+          resolve: (_, args, { rootValue: { backend } }) => (
+            backend.user()
+          )
         }
       },
       inputFields: {
