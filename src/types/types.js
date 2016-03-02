@@ -29,15 +29,15 @@ import type {
   GraphQLFields
 } from '../utils/definitions.js'
 
-function parseClientType (typeName: string) {
-  switch (typeName) {
+function parseClientType (typeIdentifier: string) {
+  switch (typeIdentifier) {
     case 'String': return GraphQLString
     case 'Boolean': return GraphQLBoolean
     case 'Int': return GraphQLInt
     case 'Float': return GraphQLFloat
     case 'GraphQLID': return GraphQLID
     // NOTE this marks a relation type which will be overwritten by `injectRelationships`
-    default: return { __isRelation: true, typeName }
+    default: return { __isRelation: true, typeIdentifier }
   }
 }
 
@@ -49,7 +49,7 @@ function generateObjectType (
     clientSchema.fields,
     (field) => field.fieldName,
     (field) => ({
-      type: parseClientType(field.typeName),
+      type: parseClientType(field.typeIdentifier),
       resolve: (obj) => obj[field.fieldName]
     })
   )
@@ -64,13 +64,13 @@ function generateObjectType (
 function generateObjectMutationInputArguments (
   clientSchema: ClientSchema
 ): GraphQLObjectType {
-  const scalarFields = clientSchema.fields.filter((field) => !parseClientType(field.typeName).__isRelation)
+  const scalarFields = clientSchema.fields.filter((field) => !parseClientType(field.typeIdentifier).__isRelation)
 
   return mapArrayToObject(
     scalarFields,
     (field) => field.fieldName,
     (field) => ({
-      type: parseClientType(field.typeName)
+      type: parseClientType(field.typeIdentifier)
     })
   )
 }
@@ -87,11 +87,11 @@ function injectRelationships (
     .forEach((clientSchemaField: ClientSchemaField) => {
       const fieldName = clientSchemaField.fieldName
       const objectTypeField = objectTypeFields[fieldName]
-      const typeName = objectTypeField.type.typeName
+      const typeIdentifier = objectTypeField.type.typeIdentifier
 
       // 1:n relationship
-      if (objectTypeField.list) {
-        const connectionType = allClientTypes[typeName].connectionType
+      if (objectTypeField.isList) {
+        const connectionType = allClientTypes[typeIdentifier].connectionType
         objectTypeField.type = connectionType
         objectTypeField.args = connectionArgs
         objectTypeField.resolve = (obj, args, { rootValue: { backend } }) => (
@@ -107,7 +107,7 @@ function injectRelationships (
         )
       // 1:1 relationship
       } else {
-        objectTypeField.type = allClientTypes[typeName].objectType
+        objectTypeField.type = allClientTypes[typeIdentifier].objectType
         objectTypeField.resolve = (obj, args, { rootValue: { backend } }) => (
           backend.node(obj[`${fieldName}ID`])
         )
@@ -120,7 +120,7 @@ function wrapWithNonNull (
   clientSchema: ClientSchema
 ): void {
   clientSchema.fields
-    .filter((field) => !field.nullable)
+    .filter((field) => field.isRequired)
     .forEach((clientSchemaField: ClientSchemaField) => {
       const fieldName = clientSchemaField.fieldName
       const objectTypeField = objectType._typeConfig.fields[fieldName]

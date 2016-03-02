@@ -32,7 +32,10 @@ export type ClientSchema = {
 
 export type ClientSchemaField = {
   fieldName: string,
-  typeName: string,
-  nullable: boolean,
-  list: boolean
+  typeIdentifier: string,
+  isRequired: boolean,
+  typeData: string,
+  isList: boolean,
+  isUnique: boolean,
+  isSystem: boolean
 }
