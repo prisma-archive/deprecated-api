@@ -12,7 +12,7 @@
     "prepublish": "npm test && npm run build",
     "start": "babel-node .",
     "build": "rm -rf lib/* && babel src --optional runtime --out-dir lib",
-    "lint": "eslint src",
+    "lint": "eslint --ignore-path .gitignore src examples",
     "check": "flow check",
     "test": "npm run lint && npm run check"
   },
