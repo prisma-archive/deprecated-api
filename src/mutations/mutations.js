@@ -16,6 +16,8 @@ import type {
   AllTypes
 } from '../utils/definitions.js'
 
+const getFieldNameFromModelName = (modelName) => modelName.charAt(0).toLowerCase() + modelName.slice(1)
+
 export function createMutationEndpoints (
   input: AllTypes
 ): GraphQLFields {
@@ -28,7 +30,7 @@ export function createMutationEndpoints (
     mutationFields[`create${modelName}`] = mutationWithClientMutationId({
       name: `Create${modelName}`,
       outputFields: {
-        node: {
+        [getFieldNameFromModelName(modelName)]: {
           type: clientTypes[modelName].objectType
         },
         viewer: {
@@ -49,7 +51,8 @@ export function createMutationEndpoints (
       },
       inputFields: clientTypes[modelName].mutationInputArguments,
       mutateAndGetPayload: (node, { rootValue: { backend } }) => {
-        return backend.createNode(modelName, node).then((node) => ({node}))
+        return backend.createNode(modelName, node)
+        .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
       }
     })
 
@@ -58,7 +61,7 @@ export function createMutationEndpoints (
     mutationFields[`update${modelName}`] = mutationWithClientMutationId({
       name: `Update${modelName}`,
       outputFields: {
-        node: {
+        [getFieldNameFromModelName(modelName)]: {
           type: clientTypes[modelName].objectType
         },
         viewer: {
@@ -77,7 +80,8 @@ export function createMutationEndpoints (
       },
       inputFields: clientTypes[modelName].mutationInputArguments,
       mutateAndGetPayload: (node, { rootValue: { backend } }) => {
-        return backend.updateNode(modelName, node.id, node).then((node) => ({node}))
+        return backend.updateNode(modelName, node.id, node)
+        .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
       }
     })
 
@@ -85,7 +89,7 @@ export function createMutationEndpoints (
     mutationFields[`delete${modelName}`] = mutationWithClientMutationId({
       name: `Delete${modelName}`,
       outputFields: {
-        node: {
+        [getFieldNameFromModelName(modelName)]: {
           type: clientTypes[modelName].objectType
         },
         viewer: {
@@ -101,7 +105,8 @@ export function createMutationEndpoints (
         }
       },
       mutateAndGetPayload: (node, { rootValue: { backend } }) => {
-        return backend.deleteNode(modelName, node.id).then((node) => ({node}))
+        return backend.deleteNode(modelName, node.id)
+        .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
       }
     })
   }
