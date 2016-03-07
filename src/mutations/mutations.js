@@ -109,6 +109,42 @@ export function createMutationEndpoints (
         .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
       }
     })
+
+    const connectionFields = clientTypes[modelName].clientSchema.fields.filter((field) => field.isList)
+    connectionFields.forEach((connectionField) => {
+      mutationFields[`add${connectionField.typeIdentifier}To${connectionField.fieldName}ConnectionOn${modelName}`] =
+        mutationWithClientMutationId({
+          name: `Add${connectionField.typeIdentifier}To${connectionField.fieldName}ConnectionOn${modelName}`,
+          outputFields: {
+            [getFieldNameFromModelName(modelName)]: {
+              type: clientTypes[modelName].objectType
+            },
+            viewer: {
+              type: viewerType,
+              resolve: (_, args, { rootValue: { backend } }) => (
+                backend.user()
+              )
+            }
+          },
+          inputFields: {
+            fromId: {
+              type: new GraphQLNonNull(GraphQLID)
+            },
+            toId: {
+              type: new GraphQLNonNull(GraphQLID)
+            }
+          },
+          mutateAndGetPayload: (args, { rootValue: { backend } }) => {
+            return backend.createRelation(
+              modelName,
+              args.fromId,
+              connectionField.fieldName,
+              connectionField.typeIdentifier,
+              args.toId)
+            .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
+          }
+        })
+    })
   }
 
   return mutationFields
