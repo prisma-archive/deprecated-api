@@ -90,12 +90,12 @@ function injectRelationships (
       const typeIdentifier = objectTypeField.type.typeIdentifier
 
       // 1:n relationship
-      if (objectTypeField.isList) {
+      if (clientSchemaField.isList) {
         const connectionType = allClientTypes[typeIdentifier].connectionType
         objectTypeField.type = connectionType
         objectTypeField.args = connectionArgs
         objectTypeField.resolve = (obj, args, { rootValue: { backend } }) => (
-          backend.allNodesByRelation(obj.id, fieldName, args)
+          backend.allNodesByRelation(typeIdentifier, obj.id, fieldName, args)
             .then((array) => {
               const { edges, pageInfo } = connectionFromArray(array, args)
               return {
@@ -103,7 +103,7 @@ function injectRelationships (
                 pageInfo,
                 totalCount: 0
               }
-            })
+            }).catch(console.log)
         )
       // 1:1 relationship
       } else {
