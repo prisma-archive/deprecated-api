@@ -144,6 +144,39 @@ export function createMutationEndpoints (
             .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
           }
         })
+      const mutationName = `remove${connectionField.typeIdentifier}From` +
+        `${connectionField.fieldName}ConnectionOn${modelName}`
+      mutationFields[mutationName] =mutationWithClientMutationId({
+        name: `Remove${connectionField.typeIdentifier}From${connectionField.fieldName}ConnectionOn${modelName}`,
+        outputFields: {
+          [getFieldNameFromModelName(modelName)]: {
+            type: clientTypes[modelName].objectType
+          },
+          viewer: {
+            type: viewerType,
+            resolve: (_, args, { rootValue: { backend } }) => (
+              backend.user()
+            )
+          }
+        },
+        inputFields: {
+          fromId: {
+            type: new GraphQLNonNull(GraphQLID)
+          },
+          toId: {
+            type: new GraphQLNonNull(GraphQLID)
+          }
+        },
+        mutateAndGetPayload: (args, { rootValue: { backend } }) => {
+          return backend.removeRelation(
+            modelName,
+            args.fromId,
+            connectionField.fieldName,
+            connectionField.typeIdentifier,
+            args.toId)
+          .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
+        }
+      })
     })
   }
 
