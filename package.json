@@ -1,6 +1,6 @@
 {
   "name": "graphcool-api",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "",
   "main": "lib/index.js",
   "files": [
@@ -16,7 +16,10 @@
     "check": "flow check",
     "test": "npm run lint && npm run check"
   },
-  "author": ["Johannes Schickling <johannes@graph.cool>", "Søren Bramer Schmidt <soren@graph.cool>"],
+  "author": [
+    "Johannes Schickling <johannes@graph.cool>",
+    "Søren Bramer Schmidt <soren@graph.cool>"
+  ],
   "license": "MIT",
   "dependencies": {
     "graphql": "^0.4.18",
