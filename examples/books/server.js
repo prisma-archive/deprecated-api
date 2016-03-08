@@ -30,19 +30,19 @@ const backend = {
   createNode: (type, node) => (
     new Promise((resolve, reject) => {
       node.id = cuid()
-      database[type][node.id] = node;
+      database[type][node.id] = node
 
       resolve(node)
     })
   ),
   updateNode: (type, id, newNode) => (
-    getNode(type, id).then(node => {
-      Object.keys(newNode).forEach(key => {
-        if(key != "clientMutationId"){
+    getNode(type, id).then((node) => {
+      Object.keys(newNode).forEach((key) => {
+        if (key !== 'clientMutationId') {
           node[key] = newNode[key]
         }
       })
-      database[type][id] = node;
+      database[type][id] = node
 
       return node
     })
@@ -50,7 +50,7 @@ const backend = {
   deleteNode: (type, id) => (
     new Promise((resolve, reject) => {
       const node = database[type][id]
-      delete database[type][id];
+      delete database[type][id]
 
       resolve(node)
     })
