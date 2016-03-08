@@ -16,8 +16,8 @@
     "check": "flow check",
     "test": "npm run lint && npm run check"
   },
-  "author": "",
-  "license": "ISC",
+  "author": ["Johannes Schickling <johannes@graph.cool>", "Søren Bramer Schmidt <soren@graph.cool>"],
+  "license": "MIT",
   "dependencies": {
     "graphql": "^0.4.18",
     "graphql-relay": "^0.3.6"
