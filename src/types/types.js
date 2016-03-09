@@ -64,13 +64,16 @@ function generateObjectType (
 function generateObjectMutationInputArguments (
   clientSchema: ClientSchema
 ): GraphQLObjectType {
-  const scalarFields = clientSchema.fields.filter((field) => !parseClientType(field.typeIdentifier).__isRelation)
+  const scalarFields = clientSchema.fields.filter((field) => 
+    !parseClientType(field.typeIdentifier).__isRelation &&
+    field.fieldName !== 'id'
+  )
 
   return mapArrayToObject(
     scalarFields,
     (field) => field.fieldName,
     (field) => ({
-      type: parseClientType(field.typeIdentifier)
+      type: field.isRequired ? new GraphQLNonNull(parseClientType(field.typeIdentifier)) : parseClientType(field.typeIdentifier) 
     })
   )
 }
