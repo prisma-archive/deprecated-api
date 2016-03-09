@@ -61,7 +61,7 @@ function generateObjectType (
   })
 }
 
-function generateObjectMutationInputArguments (
+function generateCreateObjectMutationInputArguments (
   clientSchema: ClientSchema
 ): GraphQLObjectType {
   const scalarFields = clientSchema.fields.filter((field) => 
@@ -73,7 +73,27 @@ function generateObjectMutationInputArguments (
     scalarFields,
     (field) => field.fieldName,
     (field) => ({
-      type: field.isRequired ? new GraphQLNonNull(parseClientType(field.typeIdentifier)) : parseClientType(field.typeIdentifier) 
+      type: field.isRequired  
+        ? new GraphQLNonNull(parseClientType(field.typeIdentifier)) 
+        : parseClientType(field.typeIdentifier) 
+    })
+  )
+}
+
+function generateUpdateObjectMutationInputArguments (
+  clientSchema: ClientSchema
+): GraphQLObjectType {
+  const scalarFields = clientSchema.fields.filter((field) => 
+    !parseClientType(field.typeIdentifier).__isRelation
+  )
+
+  return mapArrayToObject(
+    scalarFields,
+    (field) => field.fieldName,
+    (field) => ({
+      type: (field.fieldName === 'id')
+        ? new GraphQLNonNull(parseClientType(field.typeIdentifier)) 
+        : parseClientType(field.typeIdentifier)  
     })
   )
 }
@@ -162,8 +182,9 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
           }
         })
       })
-      const mutationInputArguments = generateObjectMutationInputArguments(clientSchema)
-      return { clientSchema, objectType, connectionType, edgeType, mutationInputArguments }
+      const createMutationInputArguments = generateCreateObjectMutationInputArguments(clientSchema)
+      const updateMutationInputArguments = generateUpdateObjectMutationInputArguments(clientSchema)
+      return { clientSchema, objectType, connectionType, edgeType, createMutationInputArguments, updateMutationInputArguments }
     },
     clientTypes
   )

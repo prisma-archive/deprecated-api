@@ -49,7 +49,7 @@ export function createMutationEndpoints (
           }))
         }
       },
-      inputFields: clientTypes[modelName].mutationInputArguments,
+      inputFields: clientTypes[modelName].createMutationInputArguments,
       mutateAndGetPayload: (node, { rootValue: { backend } }) => {
         return backend.createNode(modelName, node)
         .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
@@ -78,7 +78,7 @@ export function createMutationEndpoints (
           })
         }
       },
-      inputFields: clientTypes[modelName].mutationInputArguments,
+      inputFields: clientTypes[modelName].updateMutationInputArguments,
       mutateAndGetPayload: (node, { rootValue: { backend } }) => {
         return backend.updateNode(modelName, node.id, node)
         .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
