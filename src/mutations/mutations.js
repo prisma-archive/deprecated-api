@@ -31,7 +31,8 @@ export function createMutationEndpoints (
       name: `Create${modelName}`,
       outputFields: {
         [getFieldNameFromModelName(modelName)]: {
-          type: clientTypes[modelName].objectType
+          type: clientTypes[modelName].objectType,
+          resolve: (root) => root.node
         },
         viewer: {
           type: viewerType,
@@ -52,7 +53,7 @@ export function createMutationEndpoints (
       inputFields: clientTypes[modelName].createMutationInputArguments,
       mutateAndGetPayload: (node, { rootValue: { backend } }) => {
         return backend.createNode(modelName, node)
-        .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
+        .then((node) => ({node}))
       }
     })
 
