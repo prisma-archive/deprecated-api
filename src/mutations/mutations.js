@@ -117,13 +117,21 @@ export function createMutationEndpoints (
           name: `Add${connectionField.typeIdentifier}To${connectionField.fieldName}ConnectionOn${modelName}`,
           outputFields: {
             [getFieldNameFromModelName(modelName)]: {
-              type: clientTypes[modelName].objectType
+              type: clientTypes[modelName].objectType,
+              resolve: (root) => root.fromNode
             },
             viewer: {
               type: viewerType,
               resolve: (_, args, { rootValue: { backend } }) => (
                 backend.user()
               )
+            },
+            edge: {
+              type: clientTypes[connectionField.typeIdentifier].edgeType,
+              resolve: (root) => ({
+                cursor: offsetToCursor(0), // cursorForObjectInConnection(backend.allNodesByType(modelName), root.node),
+                node: root.toNode
+              })
             }
           },
           inputFields: {
@@ -141,7 +149,7 @@ export function createMutationEndpoints (
               connectionField.fieldName,
               connectionField.typeIdentifier,
               args.toId)
-            .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
+            .then(({fromNode, toNode}) => ({fromNode, toNode}))
           }
         })
       const mutationName = `remove${connectionField.typeIdentifier}From` +
