@@ -118,7 +118,7 @@ function injectRelationships (
         objectTypeField.type = connectionType
         objectTypeField.args = connectionArgs
         objectTypeField.resolve = (obj, args, { rootValue: { backend } }) => (
-          backend.allNodesByRelation(typeIdentifier, obj.id, fieldName, args)
+          backend.allNodesByRelation(clientSchema.modelName, obj.id, fieldName, args)
             .then((array) => {
               const { edges, pageInfo } = connectionFromArray(array, args)
               return {
