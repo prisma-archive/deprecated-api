@@ -1,6 +1,5 @@
 [ignore]
 .*/node_modules/flow-bin/.*
-.*\(is-my-json-valid\|mock\|lib\|iconv-lite\|url-regex\|json5\|spdx-license-ids\|binary-extensions\|spdx-exceptions\|resolve\|builtin-modules\|database\).*\.json
 .*/node_modules/babel-.*
 ./examples/.*
 
