@@ -51,9 +51,13 @@ export function createMutationEndpoints (
         }
       },
       inputFields: clientTypes[modelName].createMutationInputArguments,
-      mutateAndGetPayload: (node, { rootValue: { backend } }) => {
+      mutateAndGetPayload: (node, { rootValue: { backend, webhooksProcessor } }) => {
         return backend.createNode(modelName, node)
-        .then((node) => ({node}))
+        .then((node) => {
+          webhooksProcessor.nodeCreated(node, modelName)
+          return node
+        })
+        .then((node) => ({ node }))
       }
     })
 
@@ -80,8 +84,12 @@ export function createMutationEndpoints (
         }
       },
       inputFields: clientTypes[modelName].updateMutationInputArguments,
-      mutateAndGetPayload: (node, { rootValue: { backend } }) => {
+      mutateAndGetPayload: (node, { rootValue: { backend, webhooksProcessor } }) => {
         return backend.updateNode(modelName, node.id, node)
+        .then((node) => {
+          webhooksProcessor.nodeUpdated(node, modelName)
+          return node
+        })
         .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
       }
     })
@@ -105,8 +113,12 @@ export function createMutationEndpoints (
           type: new GraphQLNonNull(GraphQLID)
         }
       },
-      mutateAndGetPayload: (node, { rootValue: { backend } }) => {
+      mutateAndGetPayload: (node, { rootValue: { backend, webhooksProcessor } }) => {
         return backend.deleteNode(modelName, node.id)
+        .then((node) => {
+          webhooksProcessor.nodeDeleted(node, modelName)
+          return node
+        })
         .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
       }
     })
