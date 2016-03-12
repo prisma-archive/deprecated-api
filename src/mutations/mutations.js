@@ -155,19 +155,23 @@ export function createMutationEndpoints (
               type: new GraphQLNonNull(GraphQLID)
             }
           },
-          mutateAndGetPayload: (args, { rootValue: { backend } }) => {
+          mutateAndGetPayload: (args, { rootValue: { backend, webhooksProcessor } }) => {
             return backend.createRelation(
               modelName,
               args.fromId,
               connectionField.fieldName,
               connectionField.typeIdentifier,
               args.toId)
+            .then(({fromNode, toNode}) => {
+              webhooksProcessor.nodeAddedToConnection(toNode, connectionField.typeIdentifier, fromNode, modelName, connectionField.fieldName)
+              return {fromNode, toNode}
+            })
             .then(({fromNode, toNode}) => ({fromNode, toNode}))
           }
         })
       const mutationName = `remove${connectionField.typeIdentifier}From` +
         `${connectionField.fieldName}ConnectionOn${modelName}`
-      mutationFields[mutationName] =mutationWithClientMutationId({
+      mutationFields[mutationName] = mutationWithClientMutationId({
         name: `Remove${connectionField.typeIdentifier}From${connectionField.fieldName}ConnectionOn${modelName}`,
         outputFields: {
           [getFieldNameFromModelName(modelName)]: {
@@ -188,14 +192,19 @@ export function createMutationEndpoints (
             type: new GraphQLNonNull(GraphQLID)
           }
         },
-        mutateAndGetPayload: (args, { rootValue: { backend } }) => {
+        mutateAndGetPayload: (args, { rootValue: { backend, webhooksProcessor } }) => {
           return backend.removeRelation(
             modelName,
             args.fromId,
             connectionField.fieldName,
             connectionField.typeIdentifier,
             args.toId)
-          .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
+          .then(({fromNode, toNode}) => {
+            console.log(fromNode, toNode)
+            webhooksProcessor.nodeRemovedFromConnection(toNode, connectionField.typeIdentifier, fromNode, modelName, connectionField.fieldName)
+            return {fromNode, toNode}
+          })
+          .then(({fromNode, toNode}) => ({[getFieldNameFromModelName(modelName)]: fromNode}))
         }
       })
     })
