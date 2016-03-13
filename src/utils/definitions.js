@@ -34,6 +34,7 @@ export type ClientSchema = {
 export type ClientSchemaField = {
   fieldName: string,
   typeIdentifier: string,
+  backRelationName: string,
   isRequired: boolean,
   typeData: string,
   isList: boolean,

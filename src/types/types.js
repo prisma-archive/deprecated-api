@@ -146,7 +146,9 @@ function injectRelationships (
       } else {
         objectTypeField.type = allClientTypes[typeIdentifier].objectType
         objectTypeField.resolve = (obj, args, { rootValue: { backend } }) => (
-          backend.node(typeIdentifier, obj[`${fieldName}Id`])
+          obj[`${fieldName}Id`]
+          ? backend.node(typeIdentifier, obj[`${fieldName}Id`])
+          : null
         )
       }
     })

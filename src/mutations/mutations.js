@@ -18,6 +18,10 @@ import type {
 
 const getFieldNameFromModelName = (modelName) => modelName.charAt(0).toLowerCase() + modelName.slice(1)
 
+function getFieldsForBackRelations (args, clientSchema) {
+  return clientSchema.fields.filter((field) => field.backRelationName && args[`${field.fieldName}Id`])
+}
+
 export function createMutationEndpoints (
   input: AllTypes
 ): GraphQLFields {
@@ -53,6 +57,20 @@ export function createMutationEndpoints (
       inputFields: clientTypes[modelName].createMutationInputArguments,
       mutateAndGetPayload: (node, { rootValue: { backend, webhooksProcessor } }) => {
         return backend.createNode(modelName, node)
+        .then((node) => (
+          // todo: also remove from backRelation when set to null
+          // todo: also add to 1-many connection when updating node
+          // add in corresponding 1-many connection
+          Promise.all(getFieldsForBackRelations(node, clientTypes[modelName].clientSchema)
+            .map((field) => backend.createRelation(
+              field.typeIdentifier,
+              node[`${field.fieldName}Id`],
+              field.backRelationName,
+              modelName,
+              node.id))
+            )
+            .then(() => node)
+        ))
         .then((node) => {
           webhooksProcessor.nodeCreated(node, modelName)
           return node
@@ -162,6 +180,17 @@ export function createMutationEndpoints (
               connectionField.fieldName,
               connectionField.typeIdentifier,
               args.toId)
+            .then(({fromNode, toNode}) => {
+              // todo: also remove from backRelation when removed from relation
+              // add 1-1 connection if backRelation is present
+              if(connectionField.backRelationName){
+                toNode[`${connectionField.backRelationName}Id`] = args.fromId
+                console.log('toNode', toNode)
+                return backend.updateNode(connectionField.typeIdentifier, args.toId, toNode)
+                .then((toNode) => ({fromNode, toNode}))
+              }
+              return {fromNode, toNode}
+            })
             .then(({fromNode, toNode}) => {
               webhooksProcessor.nodeAddedToConnection(toNode, connectionField.typeIdentifier, fromNode, modelName, connectionField.fieldName)
               return {fromNode, toNode}
