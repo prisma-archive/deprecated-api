@@ -8,7 +8,8 @@ import {
 export type ClientTypes = {
   [key: string]: {
     objectType: GraphQLObjectType,
-    mutationInputArguments: GraphQLObjectType,
+    createMutationInputArguments: GraphQLObjectType,
+    updateMutationInputArguments: GraphQLObjectType,
     edgeType: GraphQLObjectType,
     connectionType: GraphQLObjectType,
     clientSchema: ClientSchema

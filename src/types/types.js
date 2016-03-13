@@ -18,8 +18,12 @@ import {
 } from 'graphql-relay'
 
 import {
-  mapArrayToObject
+  mapArrayToObject,
 } from '../utils/array.js'
+
+import {
+  mergeObjects,
+} from '../utils/object.js'
 
 import type {
   ClientSchema,
@@ -61,15 +65,13 @@ function generateObjectType (
   })
 }
 
-function generateCreateObjectMutationInputArguments (
-  clientSchema: ClientSchema
+function generateObjectMutationInputArguments(
+  clientSchema: ClientSchema,
+  scalarFilter: (field: ClientSchemaField) => boolean,
+  oneToOneFilter: (field: ClientSchemaField) => boolean
 ): GraphQLObjectType {
-  const scalarFields = clientSchema.fields.filter((field) => 
-    !parseClientType(field.typeIdentifier).__isRelation &&
-    field.fieldName !== 'id'
-  )
-
-  return mapArrayToObject(
+  const scalarFields = clientSchema.fields.filter(scalarFilter)
+  const scalarArguments = mapArrayToObject(
     scalarFields,
     (field) => field.fieldName,
     (field) => ({
@@ -78,23 +80,35 @@ function generateCreateObjectMutationInputArguments (
         : parseClientType(field.typeIdentifier) 
     })
   )
+
+  const onetoOneFields = clientSchema.fields.filter(oneToOneFilter)
+  const oneToOneArguments = mapArrayToObject(
+    onetoOneFields,
+    (field) => `${field.fieldName}Id`,
+    (field) => ({
+      type: field.isRequired ? new GraphQLNonNull(GraphQLID) : GraphQLID
+    }))
+
+  return mergeObjects(scalarArguments, oneToOneArguments)
+}
+
+function generateCreateObjectMutationInputArguments (
+  clientSchema: ClientSchema
+): GraphQLObjectType {
+  return generateObjectMutationInputArguments(
+    clientSchema,
+    (field) => !parseClientType(field.typeIdentifier).__isRelation && field.fieldName !== 'id',
+    (field) => parseClientType(field.typeIdentifier).__isRelation && !field.isList
+  )
 }
 
 function generateUpdateObjectMutationInputArguments (
   clientSchema: ClientSchema
 ): GraphQLObjectType {
-  const scalarFields = clientSchema.fields.filter((field) => 
-    !parseClientType(field.typeIdentifier).__isRelation
-  )
-
-  return mapArrayToObject(
-    scalarFields,
-    (field) => field.fieldName,
-    (field) => ({
-      type: (field.fieldName === 'id')
-        ? new GraphQLNonNull(parseClientType(field.typeIdentifier)) 
-        : parseClientType(field.typeIdentifier)  
-    })
+  return generateObjectMutationInputArguments(
+    clientSchema,
+    (field) => !parseClientType(field.typeIdentifier).__isRelation,
+    (field) => parseClientType(field.typeIdentifier).__isRelation && !field.isList
   )
 }
 
@@ -132,7 +146,7 @@ function injectRelationships (
       } else {
         objectTypeField.type = allClientTypes[typeIdentifier].objectType
         objectTypeField.resolve = (obj, args, { rootValue: { backend } }) => (
-          backend.node(obj[`${fieldName}ID`])
+          backend.node(typeIdentifier, obj[`${fieldName}Id`])
         )
       }
     })
