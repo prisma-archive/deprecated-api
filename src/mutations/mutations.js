@@ -60,16 +60,27 @@ export function createMutationEndpoints (
         .then((node) => (
           // todo: also remove from backRelation when set to null
           // todo: also add to 1-many connection when updating node
-          // add in corresponding 1-many connection
+          // add in corresponding connection
           Promise.all(getFieldsForBackRelations(node, clientTypes[modelName].clientSchema)
-            .map((field) => backend.createRelation(
-              field.typeIdentifier,
-              node[`${field.fieldName}Id`],
-              field.backRelationName,
-              modelName,
-              node.id))
-            )
-            .then(() => node)
+            .map((field) => {
+              const backRelationField = clientTypes[field.typeIdentifier].clientSchema.fields.filter((x) => x.fieldName === field.backRelationName)[0]
+              if (backRelationField.isList) {
+                return backend.createRelation(
+                  field.typeIdentifier,
+                  node[`${field.fieldName}Id`],
+                  field.backRelationName,
+                  modelName,
+                  node.id)
+              } else {
+                return backend.node(field.typeIdentifier, node[`${field.fieldName}Id`]).then((relationNode) => {
+                  console.log('relationNode', relationNode)
+                  relationNode[`${field.backRelationName}Id`] = node.id
+                  return backend.updateNode(field.typeIdentifier, relationNode.id, relationNode)
+                })
+              }
+            })
+          )
+          .then(() => node)
         ))
         .then((node) => {
           webhooksProcessor.nodeCreated(node, modelName)
