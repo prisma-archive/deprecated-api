@@ -2,7 +2,8 @@
 
 import {
   GraphQLID,
-  GraphQLNonNull
+  GraphQLNonNull,
+  GraphQLString
 } from 'graphql'
 
 import {
@@ -22,12 +23,57 @@ function getFieldsForBackRelations (args, clientSchema) {
   return clientSchema.fields.filter((field) => field.backRelationName && args[`${field.fieldName}Id`])
 }
 
+function getFieldsOfType (args, clientSchema, typeIdentifier) {
+  return clientSchema.fields.filter((field) => field.typeIdentifier === typeIdentifier && args[field.fieldName])
+}
+
 export function createMutationEndpoints (
   input: AllTypes
 ): GraphQLFields {
   const mutationFields = {}
   const clientTypes = input.clientTypes
   const viewerType = input.viewerType
+
+  mutationFields.signinUser = mutationWithClientMutationId({
+    name: 'SigninUser',
+    outputFields: {
+      token: {
+        type: GraphQLString
+      },
+      viewer: {
+        type: viewerType
+      }
+    },
+    inputFields: {
+      email: {
+        type: new GraphQLNonNull(GraphQLString)
+      },
+      password: {
+        type: new GraphQLNonNull(GraphQLString)
+      }
+    },
+    mutateAndGetPayload: (args, { rootValue: { backend } }) => (
+      // todo: efficiently get user by email
+      backend.allNodesByType('User')
+      .then((allUsers) => allUsers.filter((node) => node.email === args.email)[0])
+      .then((user) =>
+        !user
+        ? Promise.reject(`no user with the email '${args.email}'`)
+        : backend.compareHashAsync(args.password, user.password)
+          .then((result) =>
+            !result 
+            ? Promise.reject(`incorrect password for email '${args.email}'`)
+            : user
+          )
+      )
+      .then((user) => ({
+        token: backend.tokenForUser(user),
+        viewer: {
+          id: user.id
+        }
+      }))
+    )
+  })
 
   for (const modelName in clientTypes) {
     // create node
@@ -56,8 +102,12 @@ export function createMutationEndpoints (
       },
       inputFields: clientTypes[modelName].createMutationInputArguments,
       mutateAndGetPayload: (node, { rootValue: { backend, webhooksProcessor } }) => {
-        return backend.createNode(modelName, node)
-        .then((node) => (
+        return Promise.all(getFieldsOfType(node, clientTypes[modelName].clientSchema, 'Password').map((field) =>
+          backend.hashAsync(node[field.fieldName]).then((hashed) => node[field.fieldName] = hashed)
+        ))
+        .then(() =>
+          backend.createNode(modelName, node)
+        ).then((node) => (
           // todo: also remove from backRelation when set to null
           // todo: also add to 1-many connection when updating node
           // add in corresponding connection

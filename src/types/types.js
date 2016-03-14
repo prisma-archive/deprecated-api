@@ -40,6 +40,7 @@ function parseClientType (typeIdentifier: string) {
     case 'Int': return GraphQLInt
     case 'Float': return GraphQLFloat
     case 'GraphQLID': return GraphQLID
+    case 'Password': return GraphQLString
     // NOTE this marks a relation type which will be overwritten by `injectRelationships`
     default: return { __isRelation: true, typeIdentifier }
   }
