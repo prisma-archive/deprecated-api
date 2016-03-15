@@ -17,6 +17,14 @@ import type {
   AllTypes
 } from '../utils/definitions.js'
 
+import deepcopy from 'deepcopy'
+
+// todo: consolidate isScalar logic somewhere
+const scalarTypeIdentifiers = ['String', 'Boolean', 'Int', 'Float', 'GraphQLID', 'Password']
+function isScalar (modelName: string): boolean {
+  return scalarTypeIdentifiers.filter((x) => x === modelName).length > 0
+}
+
 const getFieldNameFromModelName = (modelName) => modelName.charAt(0).toLowerCase() + modelName.slice(1)
 
 function getFieldsForBackRelations (args, clientSchema) {
@@ -25,6 +33,22 @@ function getFieldsForBackRelations (args, clientSchema) {
 
 function getFieldsOfType (args, clientSchema, typeIdentifier) {
   return clientSchema.fields.filter((field) => field.typeIdentifier === typeIdentifier && args[field.fieldName])
+}
+
+function getRelationFields (args, clientSchema) {
+  return clientSchema.fields.filter((field) => !isScalar(field.typeIdentifier) && args[`${field.fieldName}Id`])
+}
+
+function patchConnectedNodesOnIdFields(node, connectedNodes, clientSchema) {
+  const nodeClone = deepcopy(node)
+  getRelationFields(node, clientSchema).forEach((field) => {
+    const connectedNode = connectedNodes.filter((x) => x.id === node[`${field.fieldName}Id`])[0]
+    if (connectedNode) {
+      nodeClone[field.fieldName] = connectedNode
+    }
+  })
+
+  return nodeClone
 }
 
 export function createMutationEndpoints (
@@ -121,6 +145,7 @@ export function createMutationEndpoints (
                   field.backRelationName,
                   modelName,
                   node.id)
+                .then(({fromNode, toNode}) => fromNode)
               } else {
                 return backend.node(field.typeIdentifier, node[`${field.fieldName}Id`]).then((relationNode) => {
                   console.log('relationNode', relationNode)
@@ -130,10 +155,11 @@ export function createMutationEndpoints (
               }
             })
           )
-          .then(() => node)
+          .then((connectedNodes) => ({connectedNodes, node}))
         ))
-        .then((node) => {
-          webhooksProcessor.nodeCreated(node, modelName)
+        .then(({connectedNodes, node}) => {
+          const patchedNode = patchConnectedNodesOnIdFields(node, connectedNodes, clientTypes[modelName].clientSchema)
+          webhooksProcessor.nodeCreated(patchedNode, modelName)
           return node
         })
         .then((node) => ({ node }))
