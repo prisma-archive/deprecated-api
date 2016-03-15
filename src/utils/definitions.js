@@ -35,6 +35,7 @@ export type ClientSchemaField = {
   fieldName: string,
   typeIdentifier: string,
   backRelationName: string,
+  enumValues: string,
   isRequired: boolean,
   typeData: string,
   isList: boolean,

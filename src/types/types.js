@@ -8,7 +8,8 @@ import {
   GraphQLID,
   GraphQLObjectType,
   GraphQLNonNull,
-  GraphQLInterfaceType
+  GraphQLInterfaceType,
+  GraphQLEnumType
 } from 'graphql'
 
 import {
@@ -18,11 +19,11 @@ import {
 } from 'graphql-relay'
 
 import {
-  mapArrayToObject,
+  mapArrayToObject
 } from '../utils/array.js'
 
 import {
-  mergeObjects,
+  mergeObjects
 } from '../utils/object.js'
 
 import type {
@@ -32,89 +33,6 @@ import type {
   AllTypes,
   GraphQLFields
 } from '../utils/definitions.js'
-
-function parseClientType (typeIdentifier: string) {
-  switch (typeIdentifier) {
-    case 'String': return GraphQLString
-    case 'Boolean': return GraphQLBoolean
-    case 'Int': return GraphQLInt
-    case 'Float': return GraphQLFloat
-    case 'GraphQLID': return GraphQLID
-    case 'Password': return GraphQLString
-    // NOTE this marks a relation type which will be overwritten by `injectRelationships`
-    default: return { __isRelation: true, typeIdentifier }
-  }
-}
-
-function generateObjectType (
-  clientSchema: ClientSchema,
-  NodeInterfaceType: GraphQLInterfaceType
-): GraphQLObjectType {
-  const graphQLFields: GraphQLFields = mapArrayToObject(
-    clientSchema.fields,
-    (field) => field.fieldName,
-    (field) => ({
-      type: parseClientType(field.typeIdentifier),
-      resolve: (obj) => obj[field.fieldName]
-    })
-  )
-
-  return new GraphQLObjectType({
-    name: clientSchema.modelName,
-    fields: graphQLFields,
-    interfaces: [NodeInterfaceType]
-  })
-}
-
-function generateObjectMutationInputArguments(
-  clientSchema: ClientSchema,
-  scalarFilter: (field: ClientSchemaField) => boolean,
-  oneToOneFilter: (field: ClientSchemaField) => boolean,
-  forceFieldsOptional: boolean = false
-): GraphQLObjectType {
-  const scalarFields = clientSchema.fields.filter(scalarFilter)
-  const scalarArguments = mapArrayToObject(
-    scalarFields,
-    (field) => field.fieldName,
-    (field) => ({
-      type: (field.isRequired && !(forceFieldsOptional && field.fieldName !== 'id'))  
-        ? new GraphQLNonNull(parseClientType(field.typeIdentifier)) 
-        : parseClientType(field.typeIdentifier) 
-    })
-  )
-
-  const onetoOneFields = clientSchema.fields.filter(oneToOneFilter)
-  const oneToOneArguments = mapArrayToObject(
-    onetoOneFields,
-    (field) => `${field.fieldName}Id`,
-    (field) => ({
-      type: (field.isRequired && !forceFieldsOptional) ? new GraphQLNonNull(GraphQLID) : GraphQLID
-    }))
-
-  return mergeObjects(scalarArguments, oneToOneArguments)
-}
-
-function generateCreateObjectMutationInputArguments (
-  clientSchema: ClientSchema
-): GraphQLObjectType {
-  return generateObjectMutationInputArguments(
-    clientSchema,
-    (field) => !parseClientType(field.typeIdentifier).__isRelation && field.fieldName !== 'id',
-    (field) => parseClientType(field.typeIdentifier).__isRelation && !field.isList,
-    false
-  )
-}
-
-function generateUpdateObjectMutationInputArguments (
-  clientSchema: ClientSchema
-): GraphQLObjectType {
-  return generateObjectMutationInputArguments(
-    clientSchema,
-    (field) => !parseClientType(field.typeIdentifier).__isRelation,
-    (field) => parseClientType(field.typeIdentifier).__isRelation && !field.isList,
-    true
-  )
-}
 
 function injectRelationships (
   objectType: GraphQLObjectType,
@@ -172,6 +90,100 @@ function wrapWithNonNull (
 }
 
 export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
+  const enumTypes = {}
+  function parseClientType (field: ClientSchemaField, modelName: string) {
+    switch (field.typeIdentifier) {
+      case 'String': return GraphQLString
+      case 'Boolean': return GraphQLBoolean
+      case 'Int': return GraphQLInt
+      case 'Float': return GraphQLFloat
+      case 'GraphQLID': return GraphQLID
+      case 'Password': return GraphQLString
+      case 'Enum' :
+        const enumTypeName = `${modelName}_${field.fieldName}`
+        if (!enumTypes[enumTypeName]) {
+          enumTypes[enumTypeName] = new GraphQLEnumType({
+            name: enumTypeName,
+            values: mapArrayToObject(field.enumValues, (x) => x, (x) => ({value: x}))
+          })
+        }
+
+        return enumTypes[enumTypeName]
+      // NOTE this marks a relation type which will be overwritten by `injectRelationships`
+      default: return { __isRelation: true, typeIdentifier: field.typeIdentifier }
+    }
+  }
+
+  function generateObjectType (
+    clientSchema: ClientSchema,
+    NodeInterfaceType: GraphQLInterfaceType
+  ): GraphQLObjectType {
+    const graphQLFields: GraphQLFields = mapArrayToObject(
+      clientSchema.fields,
+      (field) => field.fieldName,
+      (field) => ({
+        type: parseClientType(field, clientSchema.modelName),
+        resolve: (obj) => obj[field.fieldName]
+      })
+    )
+
+    return new GraphQLObjectType({
+      name: clientSchema.modelName,
+      fields: graphQLFields,
+      interfaces: [NodeInterfaceType]
+    })
+  }
+
+  function generateObjectMutationInputArguments (
+    clientSchema: ClientSchema,
+    scalarFilter: (field: ClientSchemaField) => boolean,
+    oneToOneFilter: (field: ClientSchemaField) => boolean,
+    forceFieldsOptional: boolean = false
+  ): GraphQLObjectType {
+    const scalarFields = clientSchema.fields.filter(scalarFilter)
+    const scalarArguments = mapArrayToObject(
+      scalarFields,
+      (field) => field.fieldName,
+      (field) => ({
+        type: (field.isRequired && !(forceFieldsOptional && field.fieldName !== 'id'))
+          ? new GraphQLNonNull(parseClientType(field, clientSchema.modelName))
+          : parseClientType(field, clientSchema.modelName)
+      })
+    )
+
+    const onetoOneFields = clientSchema.fields.filter(oneToOneFilter)
+    const oneToOneArguments = mapArrayToObject(
+      onetoOneFields,
+      (field) => `${field.fieldName}Id`,
+      (field) => ({
+        type: (field.isRequired && !forceFieldsOptional) ? new GraphQLNonNull(GraphQLID) : GraphQLID
+      }))
+
+    return mergeObjects(scalarArguments, oneToOneArguments)
+  }
+
+  function generateCreateObjectMutationInputArguments (
+    clientSchema: ClientSchema
+  ): GraphQLObjectType {
+    return generateObjectMutationInputArguments(
+      clientSchema,
+      (field) => !parseClientType(field, clientSchema.modelName).__isRelation && field.fieldName !== 'id',
+      (field) => parseClientType(field, clientSchema.modelName).__isRelation && !field.isList,
+      false
+    )
+  }
+
+  function generateUpdateObjectMutationInputArguments (
+    clientSchema: ClientSchema
+  ): GraphQLObjectType {
+    return generateObjectMutationInputArguments(
+      clientSchema,
+      (field) => !parseClientType(field, clientSchema.modelName).__isRelation,
+      (field) => parseClientType(field, clientSchema.modelName).__isRelation && !field.isList,
+      true
+    )
+  }
+
   const clientTypes: ClientTypes = {}
 
   // todo: implement resolve function for node interface. Possibly using nodeDefinitions from graphql-relay
@@ -181,7 +193,6 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
       id: { type: GraphQLID }
     }),
     resolveType: (node) => {
-      console.log(node)
       return GraphQLBoolean
     }
   })
@@ -204,7 +215,13 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
       })
       const createMutationInputArguments = generateCreateObjectMutationInputArguments(clientSchema)
       const updateMutationInputArguments = generateUpdateObjectMutationInputArguments(clientSchema)
-      return { clientSchema, objectType, connectionType, edgeType, createMutationInputArguments, updateMutationInputArguments }
+      return {
+        clientSchema,
+        objectType,
+        connectionType,
+        edgeType,
+        createMutationInputArguments,
+        updateMutationInputArguments}
     },
     clientTypes
   )
