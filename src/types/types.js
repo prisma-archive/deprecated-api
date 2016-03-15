@@ -69,14 +69,15 @@ function generateObjectType (
 function generateObjectMutationInputArguments(
   clientSchema: ClientSchema,
   scalarFilter: (field: ClientSchemaField) => boolean,
-  oneToOneFilter: (field: ClientSchemaField) => boolean
+  oneToOneFilter: (field: ClientSchemaField) => boolean,
+  forceFieldsOptional: boolean = false
 ): GraphQLObjectType {
   const scalarFields = clientSchema.fields.filter(scalarFilter)
   const scalarArguments = mapArrayToObject(
     scalarFields,
     (field) => field.fieldName,
     (field) => ({
-      type: field.isRequired  
+      type: (field.isRequired && !(forceFieldsOptional && field.fieldName !== 'id'))  
         ? new GraphQLNonNull(parseClientType(field.typeIdentifier)) 
         : parseClientType(field.typeIdentifier) 
     })
@@ -87,7 +88,7 @@ function generateObjectMutationInputArguments(
     onetoOneFields,
     (field) => `${field.fieldName}Id`,
     (field) => ({
-      type: field.isRequired ? new GraphQLNonNull(GraphQLID) : GraphQLID
+      type: (field.isRequired && !forceFieldsOptional) ? new GraphQLNonNull(GraphQLID) : GraphQLID
     }))
 
   return mergeObjects(scalarArguments, oneToOneArguments)
@@ -99,7 +100,8 @@ function generateCreateObjectMutationInputArguments (
   return generateObjectMutationInputArguments(
     clientSchema,
     (field) => !parseClientType(field.typeIdentifier).__isRelation && field.fieldName !== 'id',
-    (field) => parseClientType(field.typeIdentifier).__isRelation && !field.isList
+    (field) => parseClientType(field.typeIdentifier).__isRelation && !field.isList,
+    false
   )
 }
 
@@ -109,7 +111,8 @@ function generateUpdateObjectMutationInputArguments (
   return generateObjectMutationInputArguments(
     clientSchema,
     (field) => !parseClientType(field.typeIdentifier).__isRelation,
-    (field) => parseClientType(field.typeIdentifier).__isRelation && !field.isList
+    (field) => parseClientType(field.typeIdentifier).__isRelation && !field.isList,
+    true
   )
 }
 
