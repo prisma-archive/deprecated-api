@@ -53,23 +53,33 @@ function injectRelationships (
         const connectionType = allClientTypes[typeIdentifier].connectionType
         objectTypeField.type = connectionType
         objectTypeField.args = connectionArgs
-        objectTypeField.resolve = (obj, args, { rootValue: { backend } }) => (
-          backend.allNodesByRelation(clientSchema.modelName, obj.id, fieldName, args)
-            .then((array) => {
-              const { edges, pageInfo } = connectionFromArray(array, args)
-              return {
-                edges,
-                pageInfo,
-                totalCount: 0
-              }
-            }).catch(console.log)
+        objectTypeField.resolve = (obj, args, { rootValue: { backend, currentUser } }) => (
+          backend.allNodesByRelation(
+            clientSchema.modelName,
+            obj.id,
+            fieldName,
+            args,
+            allClientTypes[typeIdentifier].clientSchema,
+            currentUser)
+          .then((array) => {
+            const { edges, pageInfo } = connectionFromArray(array, args)
+            return {
+              edges,
+              pageInfo,
+              totalCount: 0
+            }
+          }).catch(console.log)
         )
       // 1:1 relationship
       } else {
         objectTypeField.type = allClientTypes[typeIdentifier].objectType
-        objectTypeField.resolve = (obj, args, { rootValue: { backend } }) => (
+        objectTypeField.resolve = (obj, args, { rootValue: { backend, currentUser } }) => (
           obj[`${fieldName}Id`]
-          ? backend.node(typeIdentifier, obj[`${fieldName}Id`])
+          ? backend.node(
+              typeIdentifier,
+              obj[`${fieldName}Id`],
+              allClientTypes[typeIdentifier].clientSchema,
+              currentUser)
           : null
         )
       }
@@ -248,8 +258,8 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
     viewerFields[`all${modelName}s`] = {
       type: clientTypes[modelName].connectionType,
       args: connectionArgs,
-      resolve: (_, args, { rootValue: { backend } }) => (
-        backend.allNodesByType(modelName, args)
+      resolve: (_, args, { rootValue: { currentUser, backend } }) => (
+        backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser)
           .then((array) => {
             const { edges, pageInfo } = connectionFromArray(array, args)
             return {

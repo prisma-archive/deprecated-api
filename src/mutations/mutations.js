@@ -78,14 +78,14 @@ export function createMutationEndpoints (
     },
     mutateAndGetPayload: (args, { rootValue: { backend } }) => (
       // todo: efficiently get user by email
-      backend.allNodesByType('User')
+      backend.NO_PERMISSION_CHECK_allNodesByType('User')
       .then((allUsers) => allUsers.filter((node) => node.email === args.email)[0])
       .then((user) =>
         !user
         ? Promise.reject(`no user with the email '${args.email}'`)
         : backend.compareHashAsync(args.password, user.password)
           .then((result) =>
-            !result 
+            !result
             ? Promise.reject(`incorrect password for email '${args.email}'`)
             : user
           )
@@ -116,18 +116,20 @@ export function createMutationEndpoints (
         },
         edge: {
           type: clientTypes[modelName].edgeType,
-          resolve: (root, args, { rootValue: { backend } }) => backend.allNodesByType(modelName)
-          .then((allNodes) => ({
+          resolve: (root, args, { rootValue: { currentUser, backend } }) =>
+          ({
             cursor: offsetToCursor(0), // todo: do we sort ascending or descending?
             node: root.node,
             viewer: backend.user()
-          }))
+          })
         }
       },
       inputFields: clientTypes[modelName].createMutationInputArguments,
-      mutateAndGetPayload: (node, { rootValue: { backend, webhooksProcessor } }) => {
+      mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
         return Promise.all(getFieldsOfType(node, clientTypes[modelName].clientSchema, 'Password').map((field) =>
-          backend.hashAsync(node[field.fieldName]).then((hashed) => node[field.fieldName] = hashed)
+          backend.hashAsync(node[field.fieldName]).then((hashed) => {
+            node[field.fieldName] = hashed
+          })
         ))
         .then(() =>
           backend.createNode(modelName, node)
@@ -147,7 +149,8 @@ export function createMutationEndpoints (
                   node.id)
                 .then(({fromNode, toNode}) => fromNode)
               } else {
-                return backend.node(field.typeIdentifier, node[`${field.fieldName}Id`]).then((relationNode) => {
+                console.log('currentUser', currentUser)
+                return backend.node(field.typeIdentifier, node[`${field.fieldName}Id`], clientTypes[field.typeIdentifier].clientSchema, currentUser).then((relationNode) => {
                   console.log('relationNode', relationNode)
                   relationNode[`${field.backRelationName}Id`] = node.id
                   return backend.updateNode(field.typeIdentifier, relationNode.id, relationNode)
@@ -172,7 +175,8 @@ export function createMutationEndpoints (
       name: `Update${modelName}`,
       outputFields: {
         [getFieldNameFromModelName(modelName)]: {
-          type: clientTypes[modelName].objectType
+          type: clientTypes[modelName].objectType,
+          resolve: (root) => root.node
         },
         viewer: {
           type: viewerType,
@@ -182,9 +186,14 @@ export function createMutationEndpoints (
         },
         edge: {
           type: clientTypes[modelName].edgeType,
-          resolve: (root, { rootValue: { backend } }) => ({
-            cursor: cursorForObjectInConnection(backend.allNodesByType(modelName), root.node),
-            node: root.node
+          resolve: (root, args, { rootValue: { currentUser, backend } }) =>
+          backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser)
+          .then((allNodes) => {
+            return ({
+              // todo: getting all nodes is not efficient
+              cursor: cursorForObjectInConnection(allNodes, allNodes.filter((x) => x.id === root.node.id)[0]),
+              node: root.node
+            })
           })
         }
       },
@@ -193,9 +202,8 @@ export function createMutationEndpoints (
         return backend.updateNode(modelName, node.id, node)
         .then((node) => {
           webhooksProcessor.nodeUpdated(node, modelName)
-          return node
+          return {node}
         })
-        .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
       }
     })
 

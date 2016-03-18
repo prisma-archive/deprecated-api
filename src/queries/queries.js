@@ -26,9 +26,11 @@ export function createQueryEndpoints (
           type: new GraphQLNonNull(GraphQLID)
         }
       },
-      resolve: (_, args, { rootValue: { backend } }) => (
-        backend.node(modelName, args.id)
-      )
+      resolve: (_, args, { operation, rootValue: { currentUser, backend } }) => {
+        console.log(modelName, currentUser)
+        // console.log(x.operation.selectionSet.selections.map((x) => x.selectionSet.selections.map((y) => y.name)))
+        return backend.node(modelName, args.id, clientTypes[modelName].clientSchema, currentUser)
+      }
     }
   }
 
