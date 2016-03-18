@@ -20,7 +20,7 @@ import type {
 import deepcopy from 'deepcopy'
 
 // todo: consolidate isScalar logic somewhere
-const scalarTypeIdentifiers = ['String', 'Boolean', 'Int', 'Float', 'GraphQLID', 'Password']
+const scalarTypeIdentifiers = ['String', 'Boolean', 'Int', 'Float', 'GraphQLID', 'Password', 'Enum']
 function isScalar (modelName: string): boolean {
   return scalarTypeIdentifiers.filter((x) => x === modelName).length > 0
 }
@@ -228,7 +228,7 @@ export function createMutationEndpoints (
       }
     })
 
-    const connectionFields = clientTypes[modelName].clientSchema.fields.filter((field) => field.isList)
+    const connectionFields = clientTypes[modelName].clientSchema.fields.filter((field) => field.isList && !isScalar(field.typeIdentifier))
     connectionFields.forEach((connectionField) => {
       mutationFields[`add${connectionField.typeIdentifier}To${connectionField.fieldName}ConnectionOn${modelName}`] =
         mutationWithClientMutationId({
