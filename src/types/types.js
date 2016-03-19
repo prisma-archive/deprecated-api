@@ -9,7 +9,8 @@ import {
   GraphQLObjectType,
   GraphQLNonNull,
   GraphQLInterfaceType,
-  GraphQLEnumType
+  GraphQLEnumType,
+  GraphQLInputObjectType
 } from 'graphql'
 
 import {
@@ -34,6 +35,22 @@ import type {
   GraphQLFields
 } from '../utils/definitions.js'
 
+const filterInputType = new GraphQLInputObjectType({
+  name: 'Filter',
+  fields: {
+    fieldName: { type: new GraphQLNonNull(GraphQLString) },
+    fieldValue: { type: new GraphQLNonNull(GraphQLString) }
+  }
+})
+
+const conenctionArgsWithFilter = mergeObjects(
+  connectionArgs,
+  {
+    filter: {
+      type: filterInputType
+    }
+  })
+
 function injectRelationships (
   objectType: GraphQLObjectType,
   clientSchema: ClientSchema,
@@ -52,7 +69,7 @@ function injectRelationships (
       if (clientSchemaField.isList) {
         const connectionType = allClientTypes[typeIdentifier].connectionType
         objectTypeField.type = connectionType
-        objectTypeField.args = connectionArgs
+        objectTypeField.args = conenctionArgsWithFilter
         objectTypeField.resolve = (obj, args, { rootValue: { backend, currentUser } }) => (
           backend.allNodesByRelation(
             clientSchema.modelName,
@@ -62,7 +79,13 @@ function injectRelationships (
             allClientTypes[typeIdentifier].clientSchema,
             currentUser)
           .then((array) => {
+            if (args.filter) {
+              const filter = args.filter
+              array = array.filter((x) => x[filter.fieldName] === filter.fieldValue)
+            }
+
             const { edges, pageInfo } = connectionFromArray(array, args)
+
             return {
               edges,
               pageInfo,
@@ -257,10 +280,15 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
   for (const modelName in clientTypes) {
     viewerFields[`all${modelName}s`] = {
       type: clientTypes[modelName].connectionType,
-      args: connectionArgs,
+      args: conenctionArgsWithFilter,
       resolve: (_, args, { rootValue: { currentUser, backend } }) => (
         backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser)
           .then((array) => {
+            if (args.filter) {
+              const filter = args.filter
+              array = array.filter((x) => x[filter.fieldName] === filter.fieldValue)
+            }
+
             const { edges, pageInfo } = connectionFromArray(array, args)
             return {
               edges,
