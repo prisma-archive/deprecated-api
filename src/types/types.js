@@ -35,21 +35,20 @@ import type {
   GraphQLFields
 } from '../utils/definitions.js'
 
-const filterInputType = new GraphQLInputObjectType({
-  name: 'Filter',
-  fields: {
-    fieldName: { type: new GraphQLNonNull(GraphQLString) },
-    fieldValue: { type: new GraphQLNonNull(GraphQLString) }
+function getFilterPairsFromFilterArgument (filter) {
+  if (!filter) {
+    return []
   }
-})
 
-const conenctionArgsWithFilter = mergeObjects(
-  connectionArgs,
-  {
-    filter: {
-      type: filterInputType
+  var filters = []
+  for (const field in filter) {
+    if (filter[field]) {
+      filters.push({ field, value: filter[field] })
     }
-  })
+  }
+
+  return filters
+}
 
 function injectRelationships (
   objectType: GraphQLObjectType,
@@ -69,7 +68,7 @@ function injectRelationships (
       if (clientSchemaField.isList) {
         const connectionType = allClientTypes[typeIdentifier].connectionType
         objectTypeField.type = connectionType
-        objectTypeField.args = conenctionArgsWithFilter
+        objectTypeField.args = allClientTypes[typeIdentifier].queryFilterInputArguments
         objectTypeField.resolve = (obj, args, { rootValue: { backend, currentUser } }) => (
           backend.allNodesByRelation(
             clientSchema.modelName,
@@ -80,8 +79,9 @@ function injectRelationships (
             currentUser)
           .then((array) => {
             if (args.filter) {
-              const filter = args.filter
-              array = array.filter((x) => x[filter.fieldName] === filter.fieldValue)
+              array = array.filter((x) =>
+                getFilterPairsFromFilterArgument(args.filter)
+                .every((filter) => x[filter.field] === filter.value))
             }
 
             const { edges, pageInfo } = connectionFromArray(array, args)
@@ -171,14 +171,15 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
     clientSchema: ClientSchema,
     scalarFilter: (field: ClientSchemaField) => boolean,
     oneToOneFilter: (field: ClientSchemaField) => boolean,
-    forceFieldsOptional: boolean = false
+    forceFieldsOptional: boolean = false,
+    forceIdFieldOptional: boolean = false
   ): GraphQLObjectType {
     const scalarFields = clientSchema.fields.filter(scalarFilter)
     const scalarArguments = mapArrayToObject(
       scalarFields,
       (field) => field.fieldName,
       (field) => ({
-        type: (field.isRequired && !(forceFieldsOptional && field.fieldName !== 'id'))
+        type: (field.isRequired && !(forceFieldsOptional && (forceIdFieldOptional || field.fieldName !== 'id')))
           ? new GraphQLNonNull(parseClientType(field, clientSchema.modelName))
           : parseClientType(field, clientSchema.modelName)
       })
@@ -217,6 +218,29 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
     )
   }
 
+  function generateQueryFilterInputArguments (
+    clientSchema: ClientSchema
+  ): GraphQLObjectType {
+    const args = generateObjectMutationInputArguments(
+      clientSchema,
+      (field) => !parseClientType(field, clientSchema.modelName).__isRelation,
+      (field) => () => false,
+      true,
+      true
+    )
+
+    return mergeObjects(
+      connectionArgs,
+      {
+        filter: {
+          type: new GraphQLInputObjectType({
+            name: `${clientSchema.modelName}Filter`,
+            fields: args
+          })
+        }
+      })
+  }
+
   const clientTypes: ClientTypes = {}
 
   // todo: implement resolve function for node interface. Possibly using nodeDefinitions from graphql-relay
@@ -248,13 +272,15 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
       })
       const createMutationInputArguments = generateCreateObjectMutationInputArguments(clientSchema)
       const updateMutationInputArguments = generateUpdateObjectMutationInputArguments(clientSchema)
+      const  queryFilterInputArguments = generateQueryFilterInputArguments(clientSchema)
       return {
         clientSchema,
         objectType,
         connectionType,
         edgeType,
         createMutationInputArguments,
-        updateMutationInputArguments}
+        updateMutationInputArguments,
+        queryFilterInputArguments}
     },
     clientTypes
   )
@@ -280,13 +306,14 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
   for (const modelName in clientTypes) {
     viewerFields[`all${modelName}s`] = {
       type: clientTypes[modelName].connectionType,
-      args: conenctionArgsWithFilter,
+      args: clientTypes[modelName].queryFilterInputArguments,
       resolve: (_, args, { rootValue: { currentUser, backend } }) => (
         backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser)
           .then((array) => {
             if (args.filter) {
-              const filter = args.filter
-              array = array.filter((x) => x[filter.fieldName] === filter.fieldValue)
+              array = array.filter((x) =>
+                getFilterPairsFromFilterArgument(args.filter)
+                .every((filter) => x[filter.field] === filter.value))
             }
 
             const { edges, pageInfo } = connectionFromArray(array, args)
