@@ -42,7 +42,7 @@ function getFilterPairsFromFilterArgument (filter) {
 
   var filters = []
   for (const field in filter) {
-    if (filter[field]) {
+    if (filter[field] != null) {
       filters.push({ field, value: filter[field] })
     }
   }
@@ -89,7 +89,7 @@ function injectRelationships (
             return {
               edges,
               pageInfo,
-              totalCount: 0
+              totalCount: array.length
             }
           }).catch(console.log)
         )
@@ -224,7 +224,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
     const args = generateObjectMutationInputArguments(
       clientSchema,
       (field) => !parseClientType(field, clientSchema.modelName).__isRelation,
-      (field) => () => false,
+      (field) => parseClientType(field, clientSchema.modelName).__isRelation && !field.isList,
       true,
       true
     )
@@ -320,7 +320,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
             return {
               edges,
               pageInfo,
-              totalCount: 0
+              totalCount: array.length
             }
           })
       )
