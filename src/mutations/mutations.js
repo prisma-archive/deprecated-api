@@ -132,7 +132,7 @@ export function createMutationEndpoints (
           })
         ))
         .then(() =>
-          backend.createNode(modelName, node)
+          backend.createNode(modelName, node, clientTypes[modelName].clientSchema, currentUser)
         ).then((node) => (
           // todo: also remove from backRelation when set to null
           // todo: also add to 1-many connection when updating node
@@ -161,7 +161,12 @@ export function createMutationEndpoints (
                 .then((relationNode) => {
                   console.log('relationNode', relationNode)
                   relationNode[`${field.backRelationName}Id`] = node.id
-                  return backend.updateNode(field.typeIdentifier, relationNode.id, relationNode)
+                  return backend.updateNode(
+                    field.typeIdentifier,
+                    relationNode.id,
+                    relationNode,
+                    clientTypes[field.typeIdentifier].clientSchema,
+                    currentUser)
                 })
               }
             })
@@ -206,8 +211,8 @@ export function createMutationEndpoints (
         }
       },
       inputFields: clientTypes[modelName].updateMutationInputArguments,
-      mutateAndGetPayload: (node, { rootValue: { backend, webhooksProcessor } }) => {
-        return backend.updateNode(modelName, node.id, node)
+      mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
+        return backend.updateNode(modelName, node.id, node, clientTypes[modelName].clientSchema, currentUser)
         .then((node) => {
           webhooksProcessor.nodeUpdated(node, modelName)
           return {node}
@@ -234,8 +239,8 @@ export function createMutationEndpoints (
           type: new GraphQLNonNull(GraphQLID)
         }
       },
-      mutateAndGetPayload: (node, { rootValue: { backend, webhooksProcessor } }) => {
-        return backend.deleteNode(modelName, node.id)
+      mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
+        return backend.deleteNode(modelName, node.id, clientTypes[modelName].clientSchema, currentUser)
         .then((node) => {
           webhooksProcessor.nodeDeleted(node, modelName)
           return node
@@ -278,7 +283,7 @@ export function createMutationEndpoints (
               type: new GraphQLNonNull(GraphQLID)
             }
           },
-          mutateAndGetPayload: (args, { rootValue: { backend, webhooksProcessor } }) => {
+          mutateAndGetPayload: (args, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
             return backend.createRelation(
               modelName,
               args.fromId,
@@ -291,7 +296,12 @@ export function createMutationEndpoints (
               if (connectionField.backRelationName) {
                 toNode[`${connectionField.backRelationName}Id`] = args.fromId
                 console.log('toNode', toNode)
-                return backend.updateNode(connectionField.typeIdentifier, args.toId, toNode)
+                return backend.updateNode(
+                  connectionField.typeIdentifier,
+                  args.toId,
+                  toNode,
+                  clientTypes[connectionField.typeIdentifier].clientSchema,
+                  currentUser)
                 .then((toNode) => ({fromNode, toNode}))
               }
               return {fromNode, toNode}
