@@ -329,6 +329,13 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
 
   viewerFields.id = { type: GraphQLID }
 
+  if (clientTypes.User) {
+    viewerFields.user = {
+      type: clientTypes.User.objectType,
+      resolve: (root) => root
+    }
+  }
+
   const viewerType = new GraphQLObjectType({
     name: 'Viewer',
     fields: viewerFields,
