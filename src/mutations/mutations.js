@@ -39,7 +39,7 @@ function getRelationFields (args, clientSchema) {
   return clientSchema.fields.filter((field) => !isScalar(field.typeIdentifier) && args[`${field.fieldName}Id`])
 }
 
-function patchConnectedNodesOnIdFields(node, connectedNodes, clientSchema) {
+function patchConnectedNodesOnIdFields (node, connectedNodes, clientSchema) {
   const nodeClone = deepcopy(node)
   getRelationFields(node, clientSchema).forEach((field) => {
     const connectedNode = connectedNodes.filter((x) => x.id === node[`${field.fieldName}Id`])[0]
@@ -139,7 +139,10 @@ export function createMutationEndpoints (
           // add in corresponding connection
           Promise.all(getFieldsForBackRelations(node, clientTypes[modelName].clientSchema)
             .map((field) => {
-              const backRelationField = clientTypes[field.typeIdentifier].clientSchema.fields.filter((x) => x.fieldName === field.backRelationName)[0]
+              const backRelationField =
+              clientTypes[field.typeIdentifier].clientSchema.fields
+              .filter((x) => x.fieldName === field.backRelationName)[0]
+
               if (backRelationField.isList) {
                 return backend.createRelation(
                   field.typeIdentifier,
@@ -150,7 +153,12 @@ export function createMutationEndpoints (
                 .then(({fromNode, toNode}) => fromNode)
               } else {
                 console.log('currentUser', currentUser)
-                return backend.node(field.typeIdentifier, node[`${field.fieldName}Id`], clientTypes[field.typeIdentifier].clientSchema, currentUser).then((relationNode) => {
+                return backend.node(
+                  field.typeIdentifier,
+                  node[`${field.fieldName}Id`],
+                  clientTypes[field.typeIdentifier].clientSchema,
+                  currentUser)
+                .then((relationNode) => {
                   console.log('relationNode', relationNode)
                   relationNode[`${field.backRelationName}Id`] = node.id
                   return backend.updateNode(field.typeIdentifier, relationNode.id, relationNode)
@@ -236,7 +244,9 @@ export function createMutationEndpoints (
       }
     })
 
-    const connectionFields = clientTypes[modelName].clientSchema.fields.filter((field) => field.isList && !isScalar(field.typeIdentifier))
+    const connectionFields =
+    clientTypes[modelName].clientSchema.fields
+    .filter((field) => field.isList && !isScalar(field.typeIdentifier))
     connectionFields.forEach((connectionField) => {
       mutationFields[`add${connectionField.typeIdentifier}To${connectionField.fieldName}ConnectionOn${modelName}`] =
         mutationWithClientMutationId({
@@ -278,7 +288,7 @@ export function createMutationEndpoints (
             .then(({fromNode, toNode}) => {
               // todo: also remove from backRelation when removed from relation
               // add 1-1 connection if backRelation is present
-              if(connectionField.backRelationName){
+              if (connectionField.backRelationName) {
                 toNode[`${connectionField.backRelationName}Id`] = args.fromId
                 console.log('toNode', toNode)
                 return backend.updateNode(connectionField.typeIdentifier, args.toId, toNode)
@@ -287,7 +297,12 @@ export function createMutationEndpoints (
               return {fromNode, toNode}
             })
             .then(({fromNode, toNode}) => {
-              webhooksProcessor.nodeAddedToConnection(toNode, connectionField.typeIdentifier, fromNode, modelName, connectionField.fieldName)
+              webhooksProcessor.nodeAddedToConnection(
+                toNode,
+                connectionField.typeIdentifier,
+                fromNode,
+                modelName,
+                connectionField.fieldName)
               return {fromNode, toNode}
             })
             .then(({fromNode, toNode}) => ({fromNode, toNode}))
@@ -325,7 +340,12 @@ export function createMutationEndpoints (
             args.toId)
           .then(({fromNode, toNode}) => {
             console.log(fromNode, toNode)
-            webhooksProcessor.nodeRemovedFromConnection(toNode, connectionField.typeIdentifier, fromNode, modelName, connectionField.fieldName)
+            webhooksProcessor.nodeRemovedFromConnection(
+              toNode,
+              connectionField.typeIdentifier,
+              fromNode,
+              modelName,
+              connectionField.fieldName)
             return {fromNode, toNode}
           })
           .then(({fromNode, toNode}) => ({[getFieldNameFromModelName(modelName)]: fromNode}))
