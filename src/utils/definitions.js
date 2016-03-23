@@ -10,6 +10,7 @@ export type ClientTypes = {
     objectType: GraphQLObjectType,
     createMutationInputArguments: GraphQLObjectType,
     updateMutationInputArguments: GraphQLObjectType,
+    queryFilterInputArguments: GraphQLObjectType,
     edgeType: GraphQLObjectType,
     connectionType: GraphQLObjectType,
     clientSchema: ClientSchema
@@ -35,7 +36,7 @@ export type ClientSchemaField = {
   fieldName: string,
   typeIdentifier: string,
   backRelationName: string,
-  enumValues: string,
+  enumValues: [string],
   isRequired: boolean,
   typeData: string,
   isList: boolean,
