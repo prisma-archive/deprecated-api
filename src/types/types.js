@@ -27,6 +27,10 @@ import {
   mergeObjects
 } from '../utils/object.js'
 
+import {
+  isScalar
+} from '../utils/graphql.js'
+
 import type {
   ClientSchema,
   ClientSchemaField,
@@ -237,8 +241,26 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
             name: `${clientSchema.modelName}Filter`,
             fields: args
           })
+        },
+        orderBy: {
+          type: generateQueryOrderByEnum(clientSchema)
         }
-      })
+      }
+    )
+  }
+
+  function generateQueryOrderByEnum (
+    clientSchema: ClientSchema
+  ): GraphQLEnumType {
+    const values = []
+    clientSchema.fields.filter((field) => isScalar(field.typeIdentifier)).forEach((field) => {
+      values.push(`${field.fieldName}_ASC`)
+      values.push(`${field.fieldName}_DESC`)
+    })
+    return new GraphQLEnumType({
+      name: `${clientSchema.modelName}SortBy`,
+      values: mapArrayToObject(values, (x) => x, (x) => ({value: x}))
+    })
   }
 
   const clientTypes: ClientTypes = {}
@@ -272,7 +294,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
       })
       const createMutationInputArguments = generateCreateObjectMutationInputArguments(clientSchema)
       const updateMutationInputArguments = generateUpdateObjectMutationInputArguments(clientSchema)
-      const  queryFilterInputArguments = generateQueryFilterInputArguments(clientSchema)
+      const queryFilterInputArguments = generateQueryFilterInputArguments(clientSchema)
       return {
         clientSchema,
         objectType,
@@ -280,7 +302,8 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
         edgeType,
         createMutationInputArguments,
         updateMutationInputArguments,
-        queryFilterInputArguments}
+        queryFilterInputArguments
+      }
     },
     clientTypes
   )
@@ -314,6 +337,25 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
               array = array.filter((x) =>
                 getFilterPairsFromFilterArgument(args.filter)
                 .every((filter) => x[filter.field] === filter.value))
+            }
+
+            // todo: how should orderBy work with other types than string and number ?
+            if (args.orderBy) {
+              const order = args.orderBy.indexOf('_DESC') > -1 ? 'DESC' : 'ASC'
+              const fieldName = args.orderBy.split(`_${order}`)[0]
+              if (order === 'DESC') {
+                array = array.sort((a, b) => {
+                  return ((typeof a[fieldName]) === 'string')
+                  ? b[fieldName].toLowerCase().localeCompare(a[fieldName].toLowerCase())
+                  : b[fieldName] - a[fieldName]
+                })
+              } else {
+                array = array.sort((a, b) => {
+                  return ((typeof a[fieldName]) === 'string')
+                  ? a[fieldName].toLowerCase().localeCompare(b[fieldName].toLowerCase())
+                  : a[fieldName] - b[fieldName]
+                })
+              }
             }
 
             const { edges, pageInfo } = connectionFromArray(array, args)
