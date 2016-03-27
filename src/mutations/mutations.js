@@ -1,368 +1,42 @@
 /* @flow */
 
-import {
-  GraphQLID,
-  GraphQLNonNull,
-  GraphQLString
-} from 'graphql'
-
-import {
-  mutationWithClientMutationId,
-  cursorForObjectInConnection,
-  offsetToCursor
-} from 'graphql-relay'
-
 import type {
   GraphQLFields,
   AllTypes
 } from '../utils/definitions.js'
 
-import deepcopy from 'deepcopy'
-
-// todo: consolidate isScalar logic somewhere
-const scalarTypeIdentifiers = ['String', 'Boolean', 'Int', 'Float', 'GraphQLID', 'Password', 'Enum']
-function isScalar (modelName: string): boolean {
-  return scalarTypeIdentifiers.filter((x) => x === modelName).length > 0
-}
-
-const getFieldNameFromModelName = (modelName) => modelName.charAt(0).toLowerCase() + modelName.slice(1)
-
-function getFieldsForBackRelations (args, clientSchema) {
-  return clientSchema.fields.filter((field) => field.backRelationName && args[`${field.fieldName}Id`])
-}
-
-function getFieldsOfType (args, clientSchema, typeIdentifier) {
-  return clientSchema.fields.filter((field) => field.typeIdentifier === typeIdentifier && args[field.fieldName])
-}
-
-function getRelationFields (args, clientSchema) {
-  return clientSchema.fields.filter((field) => !isScalar(field.typeIdentifier) && args[`${field.fieldName}Id`])
-}
-
-function patchConnectedNodesOnIdFields (node, connectedNodes, clientSchema) {
-  const nodeClone = deepcopy(node)
-  getRelationFields(node, clientSchema).forEach((field) => {
-    const connectedNode = connectedNodes.filter((x) => x.id === node[`${field.fieldName}Id`])[0]
-    if (connectedNode) {
-      nodeClone[field.fieldName] = connectedNode
-    }
-  })
-
-  return nodeClone
-}
+import { isScalar } from '../utils/graphql.js'
+import signinUser from './signinUser'
+import createNode from './create'
+import updateNode from './update'
+import deleteNode from './delete'
+import addToConnection from './addToConnection'
+import removeFromConnection from './removeFromConnection'
 
 export function createMutationEndpoints (
   input: AllTypes
 ): GraphQLFields {
-  const mutationFields = {}
+  const fields = {}
   const clientTypes = input.clientTypes
   const viewerType = input.viewerType
 
-  mutationFields.signinUser = mutationWithClientMutationId({
-    name: 'SigninUser',
-    outputFields: {
-      token: {
-        type: GraphQLString
-      },
-      viewer: {
-        type: viewerType
-      }
-    },
-    inputFields: {
-      email: {
-        type: new GraphQLNonNull(GraphQLString)
-      },
-      password: {
-        type: new GraphQLNonNull(GraphQLString)
-      }
-    },
-    mutateAndGetPayload: (args, { rootValue: { backend } }) => (
-      // todo: efficiently get user by email
-      backend.NO_PERMISSION_CHECK_allNodesByType('User')
-      .then((allUsers) => allUsers.filter((node) => node.email === args.email)[0])
-      .then((user) =>
-        !user
-        ? Promise.reject(`no user with the email '${args.email}'`)
-        : backend.compareHashAsync(args.password, user.password)
-          .then((result) =>
-            !result
-            ? Promise.reject(`incorrect password for email '${args.email}'`)
-            : user
-          )
-      )
-      .then((user) => ({
-        token: backend.tokenForUser(user),
-        viewer: {
-          id: user.id
-        }
-      }))
-    )
-  })
+  fields.signinUser = signinUser(viewerType)
 
   for (const modelName in clientTypes) {
-    // create node
-    mutationFields[`create${modelName}`] = mutationWithClientMutationId({
-      name: `Create${modelName}`,
-      outputFields: {
-        [getFieldNameFromModelName(modelName)]: {
-          type: clientTypes[modelName].objectType,
-          resolve: (root) => root.node
-        },
-        viewer: {
-          type: viewerType,
-          resolve: (_, args, { rootValue: { backend } }) => (
-            backend.user()
-          )
-        },
-        edge: {
-          type: clientTypes[modelName].edgeType,
-          resolve: (root, args, { rootValue: { currentUser, backend } }) =>
-          ({
-            cursor: offsetToCursor(0), // todo: do we sort ascending or descending?
-            node: root.node,
-            viewer: backend.user()
-          })
-        }
-      },
-      inputFields: clientTypes[modelName].createMutationInputArguments,
-      mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
-        return Promise.all(getFieldsOfType(node, clientTypes[modelName].clientSchema, 'Password').map((field) =>
-          backend.hashAsync(node[field.fieldName]).then((hashed) => {
-            node[field.fieldName] = hashed
-          })
-        ))
-        .then(() =>
-          backend.createNode(modelName, node, clientTypes[modelName].clientSchema, currentUser)
-        ).then((node) => (
-          // todo: also remove from backRelation when set to null
-          // todo: also add to 1-many connection when updating node
-          // add in corresponding connection
-          Promise.all(getFieldsForBackRelations(node, clientTypes[modelName].clientSchema)
-            .map((field) => {
-              const backRelationField =
-              clientTypes[field.typeIdentifier].clientSchema.fields
-              .filter((x) => x.fieldName === field.backRelationName)[0]
+    fields[`create${modelName}`] = createNode(viewerType, clientTypes, modelName)
+    fields[`update${modelName}`] = updateNode(viewerType, clientTypes, modelName)
+    fields[`delete${modelName}`] = deleteNode(viewerType, clientTypes, modelName)
 
-              if (backRelationField.isList) {
-                return backend.createRelation(
-                  field.typeIdentifier,
-                  node[`${field.fieldName}Id`],
-                  field.backRelationName,
-                  modelName,
-                  node.id)
-                .then(({fromNode, toNode}) => fromNode)
-              } else {
-                console.log('currentUser', currentUser)
-                return backend.node(
-                  field.typeIdentifier,
-                  node[`${field.fieldName}Id`],
-                  clientTypes[field.typeIdentifier].clientSchema,
-                  currentUser)
-                .then((relationNode) => {
-                  console.log('relationNode', relationNode)
-                  relationNode[`${field.backRelationName}Id`] = node.id
-                  return backend.updateNode(
-                    field.typeIdentifier,
-                    relationNode.id,
-                    relationNode,
-                    clientTypes[field.typeIdentifier].clientSchema,
-                    currentUser)
-                })
-              }
-            })
-          )
-          .then((connectedNodes) => ({connectedNodes, node}))
-        ))
-        .then(({connectedNodes, node}) => {
-          const patchedNode = patchConnectedNodesOnIdFields(node, connectedNodes, clientTypes[modelName].clientSchema)
-          webhooksProcessor.nodeCreated(patchedNode, modelName)
-          return node
-        })
-        .then((node) => ({ node }))
-      }
-    })
-
-    // update node
-    // todo: make id input argument NOT NULL
-    mutationFields[`update${modelName}`] = mutationWithClientMutationId({
-      name: `Update${modelName}`,
-      outputFields: {
-        [getFieldNameFromModelName(modelName)]: {
-          type: clientTypes[modelName].objectType,
-          resolve: (root) => root.node
-        },
-        viewer: {
-          type: viewerType,
-          resolve: (_, args, { rootValue: { backend } }) => (
-            backend.user()
-          )
-        },
-        edge: {
-          type: clientTypes[modelName].edgeType,
-          resolve: (root, args, { rootValue: { currentUser, backend } }) =>
-          backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser)
-          .then((allNodes) => {
-            return ({
-              // todo: getting all nodes is not efficient
-              cursor: cursorForObjectInConnection(allNodes, allNodes.filter((x) => x.id === root.node.id)[0]),
-              node: root.node
-            })
-          })
-        }
-      },
-      inputFields: clientTypes[modelName].updateMutationInputArguments,
-      mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
-        return backend.updateNode(modelName, node.id, node, clientTypes[modelName].clientSchema, currentUser)
-        .then((node) => {
-          webhooksProcessor.nodeUpdated(node, modelName)
-          return {node}
-        })
-      }
-    })
-
-    // delete node
-    mutationFields[`delete${modelName}`] = mutationWithClientMutationId({
-      name: `Delete${modelName}`,
-      outputFields: {
-        [getFieldNameFromModelName(modelName)]: {
-          type: clientTypes[modelName].objectType
-        },
-        viewer: {
-          type: viewerType,
-          resolve: (_, args, { rootValue: { backend } }) => (
-            backend.user()
-          )
-        }
-      },
-      inputFields: {
-        id: {
-          type: new GraphQLNonNull(GraphQLID)
-        }
-      },
-      mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
-        return backend.deleteNode(modelName, node.id, clientTypes[modelName].clientSchema, currentUser)
-        .then((node) => {
-          webhooksProcessor.nodeDeleted(node, modelName)
-          return node
-        })
-        .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
-      }
-    })
-
-    const connectionFields =
     clientTypes[modelName].clientSchema.fields
     .filter((field) => field.isList && !isScalar(field.typeIdentifier))
-    connectionFields.forEach((connectionField) => {
-      mutationFields[`add${connectionField.typeIdentifier}To${connectionField.fieldName}ConnectionOn${modelName}`] =
-        mutationWithClientMutationId({
-          name: `Add${connectionField.typeIdentifier}To${connectionField.fieldName}ConnectionOn${modelName}`,
-          outputFields: {
-            [getFieldNameFromModelName(modelName)]: {
-              type: clientTypes[modelName].objectType,
-              resolve: (root) => root.fromNode
-            },
-            viewer: {
-              type: viewerType,
-              resolve: (_, args, { rootValue: { backend } }) => (
-                backend.user()
-              )
-            },
-            edge: {
-              type: clientTypes[connectionField.typeIdentifier].edgeType,
-              resolve: (root) => ({
-                cursor: offsetToCursor(0), // cursorForObjectInConnection(backend.allNodesByType(modelName), root.node),
-                node: root.toNode
-              })
-            }
-          },
-          inputFields: {
-            fromId: {
-              type: new GraphQLNonNull(GraphQLID)
-            },
-            toId: {
-              type: new GraphQLNonNull(GraphQLID)
-            }
-          },
-          mutateAndGetPayload: (args, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
-            return backend.createRelation(
-              modelName,
-              args.fromId,
-              connectionField.fieldName,
-              connectionField.typeIdentifier,
-              args.toId)
-            .then(({fromNode, toNode}) => {
-              // todo: also remove from backRelation when removed from relation
-              // add 1-1 connection if backRelation is present
-              if (connectionField.backRelationName) {
-                toNode[`${connectionField.backRelationName}Id`] = args.fromId
-                console.log('toNode', toNode)
-                return backend.updateNode(
-                  connectionField.typeIdentifier,
-                  args.toId,
-                  toNode,
-                  clientTypes[connectionField.typeIdentifier].clientSchema,
-                  currentUser)
-                .then((toNode) => ({fromNode, toNode}))
-              }
-              return {fromNode, toNode}
-            })
-            .then(({fromNode, toNode}) => {
-              webhooksProcessor.nodeAddedToConnection(
-                toNode,
-                connectionField.typeIdentifier,
-                fromNode,
-                modelName,
-                connectionField.fieldName)
-              return {fromNode, toNode}
-            })
-            .then(({fromNode, toNode}) => ({fromNode, toNode}))
-          }
-        })
-      const mutationName = `remove${connectionField.typeIdentifier}From` +
-        `${connectionField.fieldName}ConnectionOn${modelName}`
-      mutationFields[mutationName] = mutationWithClientMutationId({
-        name: `Remove${connectionField.typeIdentifier}From${connectionField.fieldName}ConnectionOn${modelName}`,
-        outputFields: {
-          [getFieldNameFromModelName(modelName)]: {
-            type: clientTypes[modelName].objectType
-          },
-          viewer: {
-            type: viewerType,
-            resolve: (_, args, { rootValue: { backend } }) => (
-              backend.user()
-            )
-          }
-        },
-        inputFields: {
-          fromId: {
-            type: new GraphQLNonNull(GraphQLID)
-          },
-          toId: {
-            type: new GraphQLNonNull(GraphQLID)
-          }
-        },
-        mutateAndGetPayload: (args, { rootValue: { backend, webhooksProcessor } }) => {
-          return backend.removeRelation(
-            modelName,
-            args.fromId,
-            connectionField.fieldName,
-            connectionField.typeIdentifier,
-            args.toId)
-          .then(({fromNode, toNode}) => {
-            console.log(fromNode, toNode)
-            webhooksProcessor.nodeRemovedFromConnection(
-              toNode,
-              connectionField.typeIdentifier,
-              fromNode,
-              modelName,
-              connectionField.fieldName)
-            return {fromNode, toNode}
-          })
-          .then(({fromNode, toNode}) => ({[getFieldNameFromModelName(modelName)]: fromNode}))
-        }
-      })
+    .forEach((connectionField) => {
+      fields[`add${connectionField.typeIdentifier}To${connectionField.fieldName}ConnectionOn${modelName}`] =
+        addToConnection(viewerType, clientTypes, modelName, connectionField)
+
+      fields[`remove${connectionField.typeIdentifier}From${connectionField.fieldName}ConnectionOn${modelName}`] =
+        removeFromConnection(viewerType, clientTypes, modelName, connectionField)
     })
   }
 
-  return mutationFields
+  return fields
 }
