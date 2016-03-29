@@ -10,6 +10,10 @@ import type {
   GraphQLFields
 } from '../utils/definitions.js'
 
+import {
+  fromGlobalId
+} from 'graphql-relay'
+
 export function createQueryEndpoints (
   input: AllTypes
 ): GraphQLFields {
@@ -27,7 +31,8 @@ export function createQueryEndpoints (
         }
       },
       resolve: (_, args, { operation, rootValue: { currentUser, backend } }) => {
-        return backend.node(modelName, args.id, clientTypes[modelName].clientSchema, currentUser)
+        const { id } = fromGlobalId(args.id)
+        return backend.node(modelName, id, clientTypes[modelName].clientSchema, currentUser)
       }
     }
   }
@@ -37,6 +42,27 @@ export function createQueryEndpoints (
     resolve: (_, args, { rootValue: { backend } }) => (
       backend.user()
     )
+  }
+
+  queryFields['node'] = {
+    name: 'node',
+    description: 'Fetches an object given its ID',
+    type: input.NodeInterfaceType,
+    args: {
+      id: {
+        type: new GraphQLNonNull(GraphQLID),
+        description: 'The ID of an object'
+      }
+    },
+    resolve: (obj, {id}, { rootValue: { currentUser, backend } }) => {
+      const {id: internalId, type} = fromGlobalId(id)
+
+      return backend.node(type, internalId, clientTypes[type].clientSchema, currentUser)
+      .then((node) => {
+        console.log('node', node)
+        return node
+      })
+    }
   }
 
   return queryFields

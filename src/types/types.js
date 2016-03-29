@@ -16,7 +16,9 @@ import {
 import {
   connectionDefinitions,
   connectionArgs,
-  connectionFromArray
+  connectionFromArray,
+  toGlobalId,
+  fromGlobalId
 } from 'graphql-relay'
 
 import {
@@ -28,7 +30,9 @@ import {
 } from '../utils/object.js'
 
 import {
-  isScalar
+  isScalar,
+  convertInputFieldsToInternalIds,
+  externalIdFromQueryInfo
 } from '../utils/graphql.js'
 
 import type {
@@ -83,6 +87,7 @@ function injectRelationships (
             currentUser)
           .then((array) => {
             if (args.filter) {
+              args.filter = convertInputFieldsToInternalIds(args.filter, allClientTypes[typeIdentifier].clientSchema)
               array = array.filter((x) =>
                 getFilterPairsFromFilterArgument(args.filter)
                 .every((filter) => x[filter.field] === filter.value))
@@ -158,10 +163,14 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
     const graphQLFields: GraphQLFields = mapArrayToObject(
       clientSchema.fields,
       (field) => field.fieldName,
-      (field) => ({
-        type: parseClientType(field, clientSchema.modelName),
-        resolve: (obj) => obj[field.fieldName]
-      })
+      (field) => {
+        const type = parseClientType(field, clientSchema.modelName)
+        const resolve = field.fieldName === 'id'
+          ? (obj) => toGlobalId(clientSchema.modelName, obj[field.fieldName])
+          : (obj) => obj[field.fieldName]
+
+        return {type, resolve}
+      }
     )
 
     return new GraphQLObjectType({
@@ -271,8 +280,10 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
     fields: () => ({
       id: { type: GraphQLID }
     }),
-    resolveType: (node) => {
-      return GraphQLBoolean
+    resolveType: (node, info) => {
+      const externalId = externalIdFromQueryInfo(info)
+      const {type} = fromGlobalId(externalId)
+      return clientTypes[type].objectType
     }
   })
 
@@ -334,6 +345,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
         backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser)
           .then((array) => {
             if (args.filter) {
+              args.filter = convertInputFieldsToInternalIds(args.filter, clientTypes[modelName].clientSchema)
               array = array.filter((x) =>
                 getFilterPairsFromFilterArgument(args.filter)
                 .every((filter) => x[filter.field] === filter.value))
@@ -369,7 +381,10 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
     }
   }
 
-  viewerFields.id = { type: GraphQLID }
+  viewerFields.id = {
+    type: GraphQLID,
+    resolve: (obj) => toGlobalId('User', obj.id)
+  }
 
   if (clientTypes.User) {
     viewerFields.user = {

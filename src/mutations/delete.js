@@ -8,7 +8,7 @@ import {
   mutationWithClientMutationId
 } from 'graphql-relay'
 
-import { getFieldNameFromModelName } from '../utils/graphql.js'
+import { getFieldNameFromModelName, convertInputFieldsToInternalIds } from '../utils/graphql.js'
 
 export default function (viewerType, clientTypes, modelName) {
   return mutationWithClientMutationId({
@@ -30,6 +30,8 @@ export default function (viewerType, clientTypes, modelName) {
         }
       },
       mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
+        node = convertInputFieldsToInternalIds(node, clientTypes[modelName].clientSchema)
+
         return backend.deleteNode(modelName, node.id, clientTypes[modelName].clientSchema, currentUser)
         .then((node) => {
           webhooksProcessor.nodeDeleted(node, modelName)

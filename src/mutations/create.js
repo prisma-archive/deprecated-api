@@ -7,7 +7,12 @@ import {
   mutationWithClientMutationId
 } from 'graphql-relay'
 
-import { getFieldNameFromModelName, getFieldsForBackRelations, patchConnectedNodesOnIdFields } from '../utils/graphql.js'
+import { 
+  getFieldNameFromModelName,
+  getFieldsForBackRelations,
+  patchConnectedNodesOnIdFields,
+  convertInputFieldsToInternalIds
+} from '../utils/graphql.js'
 
 function getFieldsOfType (args, clientSchema, typeIdentifier) {
   return clientSchema.fields.filter((field) => field.typeIdentifier === typeIdentifier && args[field.fieldName])
@@ -39,6 +44,7 @@ export default function (viewerType, clientTypes, modelName) {
     },
     inputFields: clientTypes[modelName].createMutationInputArguments,
     mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
+      node = convertInputFieldsToInternalIds(node, clientTypes[modelName].clientSchema)
       return Promise.all(getFieldsOfType(node, clientTypes[modelName].clientSchema, 'Password').map((field) =>
         backend.hashAsync(node[field.fieldName]).then((hashed) => {
           node[field.fieldName] = hashed
