@@ -1,7 +1,14 @@
+/* @flow */
+
+import type {
+  ClientTypes,
+  ClientSchemaField
+} from '../utils/definitions.js'
+
 import {
   GraphQLNonNull,
   GraphQLID,
-  GraphQLString
+  GraphQLObjectType
 } from 'graphql'
 
 import {
@@ -10,7 +17,9 @@ import {
 
 import { getFieldNameFromModelName, convertInputFieldsToInternalIds } from '../utils/graphql.js'
 
-export default function (viewerType, clientTypes, modelName, connectionField) {
+export default function (
+  viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string, connectionField: ClientSchemaField
+  ): GraphQLObjectType {
   return mutationWithClientMutationId({
     name: `Remove${connectionField.typeIdentifier}From${connectionField.fieldName}ConnectionOn${modelName}`,
     outputFields: {

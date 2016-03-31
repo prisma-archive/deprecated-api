@@ -1,13 +1,19 @@
+/* @flow */
+
 import {
-  GraphQLNonNull,
-  GraphQLString
+  GraphQLObjectType
 } from 'graphql'
 
+import type {
+  ClientTypes
+} from '../utils/definitions.js'
+
 import {
-  mutationWithClientMutationId
+  mutationWithClientMutationId,
+  offsetToCursor
 } from 'graphql-relay'
 
-import { 
+import {
   getFieldNameFromModelName,
   getFieldsForBackRelations,
   patchConnectedNodesOnIdFields,
@@ -18,7 +24,9 @@ function getFieldsOfType (args, clientSchema, typeIdentifier) {
   return clientSchema.fields.filter((field) => field.typeIdentifier === typeIdentifier && args[field.fieldName])
 }
 
-export default function (viewerType, clientTypes, modelName) {
+export default function (
+  viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string
+  ): GraphQLObjectType {
   return mutationWithClientMutationId({
     name: `Create${modelName}`,
     outputFields: {

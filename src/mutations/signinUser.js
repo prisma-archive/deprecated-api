@@ -1,13 +1,18 @@
+/* @flow */
+
 import {
   GraphQLNonNull,
-  GraphQLString
+  GraphQLString,
+  GraphQLObjectType
 } from 'graphql'
 
 import {
   mutationWithClientMutationId
 } from 'graphql-relay'
 
-export default function (viewerType) {
+export default function (
+  viewerType: GraphQLObjectType
+  ): GraphQLObjectType {
   return mutationWithClientMutationId({
     name: 'SigninUser',
     outputFields: {

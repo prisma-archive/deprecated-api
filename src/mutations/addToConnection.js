@@ -1,16 +1,26 @@
+/* @flow */
+
 import {
   GraphQLNonNull,
   GraphQLID,
-  GraphQLString
+  GraphQLObjectType
 } from 'graphql'
 
+import type {
+  ClientTypes,
+  ClientSchemaField
+} from '../utils/definitions.js'
+
 import {
-  mutationWithClientMutationId
+  mutationWithClientMutationId,
+  offsetToCursor
 } from 'graphql-relay'
 
 import { getFieldNameFromModelName, convertInputFieldsToInternalIds } from '../utils/graphql.js'
 
-export default function (viewerType, clientTypes, modelName, connectionField) {
+export default function (
+  viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string, connectionField: ClientSchemaField
+  ): GraphQLObjectType {
   return mutationWithClientMutationId({
     name: `Add${connectionField.typeIdentifier}To${connectionField.fieldName}ConnectionOn${modelName}`,
     outputFields: {

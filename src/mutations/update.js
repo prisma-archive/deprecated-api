@@ -1,15 +1,23 @@
+/* @flow */
+
+import type {
+  ClientTypes
+} from '../utils/definitions.js'
+
 import {
-  GraphQLNonNull,
-  GraphQLString
+  GraphQLObjectType
 } from 'graphql'
 
 import {
-  mutationWithClientMutationId
+  mutationWithClientMutationId,
+  cursorForObjectInConnection
 } from 'graphql-relay'
 
 import { getFieldNameFromModelName, convertInputFieldsToInternalIds } from '../utils/graphql.js'
 
-export default function (viewerType, clientTypes, modelName) {
+export default function (
+  viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string
+  ): GraphQLObjectType {
   return mutationWithClientMutationId({
     name: `Update${modelName}`,
     outputFields: {
