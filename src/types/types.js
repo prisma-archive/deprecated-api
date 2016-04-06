@@ -77,14 +77,15 @@ function injectRelationships (
         const connectionType = allClientTypes[typeIdentifier].connectionType
         objectTypeField.type = connectionType
         objectTypeField.args = allClientTypes[typeIdentifier].queryFilterInputArguments
-        objectTypeField.resolve = (obj, args, { rootValue: { backend, currentUser } }) => (
+        objectTypeField.resolve = (obj, args, { operation, rootValue: { backend, currentUser } }) => (
           backend.allNodesByRelation(
             clientSchema.modelName,
             obj.id,
             fieldName,
             args,
             allClientTypes[typeIdentifier].clientSchema,
-            currentUser)
+            currentUser,
+            operation)
           .then((array) => {
             if (args.filter) {
               args.filter = convertInputFieldsToInternalIds(args.filter, allClientTypes[typeIdentifier].clientSchema)
@@ -105,13 +106,14 @@ function injectRelationships (
       // 1:1 relationship
       } else {
         objectTypeField.type = allClientTypes[typeIdentifier].objectType
-        objectTypeField.resolve = (obj, args, { rootValue: { backend, currentUser } }) => (
+        objectTypeField.resolve = (obj, args, { operation, rootValue: { backend, currentUser } }) => (
           obj[`${fieldName}Id`]
           ? backend.node(
               typeIdentifier,
               obj[`${fieldName}Id`],
               allClientTypes[typeIdentifier].clientSchema,
-              currentUser)
+              currentUser,
+              operation)
           : null
         )
       }
@@ -341,8 +343,8 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
     viewerFields[`all${modelName}s`] = {
       type: clientTypes[modelName].connectionType,
       args: clientTypes[modelName].queryFilterInputArguments,
-      resolve: (_, args, { rootValue: { currentUser, backend } }) => (
-        backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser)
+      resolve: (_, args, { operation, rootValue: { currentUser, backend } }) => (
+        backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser, operation)
           .then((array) => {
             if (args.filter) {
               args.filter = convertInputFieldsToInternalIds(args.filter, clientTypes[modelName].clientSchema)

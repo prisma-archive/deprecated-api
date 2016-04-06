@@ -32,7 +32,7 @@ export function createQueryEndpoints (
       },
       resolve: (_, args, { operation, rootValue: { currentUser, backend } }) => {
         const { id } = fromGlobalId(args.id)
-        return backend.node(modelName, id, clientTypes[modelName].clientSchema, currentUser)
+        return backend.node(modelName, id, clientTypes[modelName].clientSchema, currentUser, operation)
       }
     }
   }
@@ -54,10 +54,10 @@ export function createQueryEndpoints (
         description: 'The ID of an object'
       }
     },
-    resolve: (obj, {id}, { rootValue: { currentUser, backend } }) => {
+    resolve: (obj, {id}, { operation, rootValue: { currentUser, backend } }) => {
       const {id: internalId, type} = fromGlobalId(id)
 
-      return backend.node(type, internalId, clientTypes[type].clientSchema, currentUser)
+      return backend.node(type, internalId, clientTypes[type].clientSchema, currentUser, operation)
       .then((node) => {
         console.log('node', node)
         return node
