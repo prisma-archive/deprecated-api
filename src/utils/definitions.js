@@ -32,14 +32,23 @@ export type ClientSchema = {
   fields: Array<ClientSchemaField>
 }
 
+export type permission = {
+  id: string,
+  userType: string,
+  allowRead: boolean,
+  allowCreate: boolean,
+  allowUpdate: boolean,
+  allowDelete: boolean
+}
+
 export type ClientSchemaField = {
   fieldName: string,
   typeIdentifier: string,
-  backRelationName: string,
+  backRelationName: ?string,
   enumValues: [string],
   isRequired: boolean,
-  typeData: string,
   isList: boolean,
   isUnique: boolean,
-  isSystem: boolean
+  isSystem: boolean,
+  permissions: [permission]
 }
