@@ -12,8 +12,13 @@ import {
 } from 'graphql-relay'
 
 export function isScalar (typeIdentifier: string): boolean {
-  const scalarTypes = ['String', 'Int', 'Float', 'Boolean', 'GraphQLID', 'Enum']
+  const scalarTypes = ['String', 'Int', 'Float', 'Boolean', 'GraphQLID', 'Password', 'Enum']
   return scalarTypes.filter((x) => x === typeIdentifier).length > 0
+}
+
+export function isReservedType (typeIdentifier: string): boolean {
+  const reservedTypeIdentifiers = ['User']
+  return reservedTypeIdentifiers.filter((x) => x === typeIdentifier).length > 0
 }
 
 export function getFieldNameFromModelName (modelName: string): string {
