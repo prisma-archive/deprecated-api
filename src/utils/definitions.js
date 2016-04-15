@@ -35,6 +35,8 @@ export type ClientSchema = {
 export type permission = {
   id: string,
   userType: string,
+  userPath: ?string,
+  userRole: ?string,
   allowRead: boolean,
   allowCreate: boolean,
   allowUpdate: boolean,
