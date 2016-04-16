@@ -276,7 +276,6 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
 
   const clientTypes: ClientTypes = {}
 
-  // todo: implement resolve function for node interface. Possibly using nodeDefinitions from graphql-relay
   const NodeInterfaceType = new GraphQLInterfaceType({
     name: 'NodeInterface',
     fields: () => ({

@@ -61,8 +61,6 @@ export default function (
       .then(() =>
         backend.createNode(modelName, node, clientTypes[modelName].clientSchema, currentUser)
       ).then((node) => (
-        // todo: also remove from backRelation when set to null
-        // todo: also add to 1-many connection when updating node
         // add in corresponding connection
         Promise.all(getFieldsForBackRelations(node, clientTypes[modelName].clientSchema)
           .map((field) => {

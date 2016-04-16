@@ -11,6 +11,14 @@ import {
   fromGlobalId
 } from 'graphql-relay'
 
+export function isValidName (name: string): boolean {
+  return /^[_a-zA-Z][_a-zA-Z0-9]*$/.test(name)
+}
+
+export function isValidProjectName (name: string): boolean {
+  return /^[_a-zA-Z][_a-zA-Z0-9\s-]*$/.test(name)
+}
+
 export function isScalar (typeIdentifier: string): boolean {
   const scalarTypes = ['String', 'Int', 'Float', 'Boolean', 'GraphQLID', 'Password', 'Enum']
   return scalarTypes.filter((x) => x === typeIdentifier).length > 0
