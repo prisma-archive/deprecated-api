@@ -41,16 +41,44 @@ export default function (
         type: new GraphQLNonNull(GraphQLID)
       }
     },
-    mutateAndGetPayload: (args, { rootValue: { backend, webhooksProcessor } }) => {
-      args = convertInputFieldsToInternalIds(args, clientTypes[modelName].clientSchema)
-      return backend.removeRelation(
-        modelName,
-        args.fromId,
-        connectionField.fieldName,
-        connectionField.typeIdentifier,
-        args.toId)
+    mutateAndGetPayload: (args, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
+      args = convertInputFieldsToInternalIds(args, clientTypes[modelName].clientSchema, ['fromId', 'toId'])
+
+      function backRelationExists () {
+        return connectionField.backRelationName &&
+              !clientTypes[connectionField.typeIdentifier].clientSchema.fields
+              .filter((x) => x.fieldName === connectionField.backRelationName)[0].isList
+      }
+
+      function removeBackRelation () {
+        return backend.node(
+          connectionField.typeIdentifier,
+          args.toId,
+          clientTypes[connectionField.typeIdentifier].clientSchema,
+          currentUser)
+        .then((toNode) => {
+          toNode[`${connectionField.backRelationName}Id`] = null
+
+          backend.updateNode(
+            connectionField.typeIdentifier,
+            args.toId,
+            toNode,
+            clientTypes[connectionField.typeIdentifier].clientSchema,
+            currentUser)
+        })
+      }
+
+      return (backRelationExists()
+      ? removeBackRelation()
+      : Promise.resolve()
+      ).then(() =>
+        backend.removeRelation(
+          modelName,
+          args.fromId,
+          connectionField.fieldName,
+          connectionField.typeIdentifier,
+          args.toId))
       .then(({fromNode, toNode}) => {
-        console.log(fromNode, toNode)
         webhooksProcessor.nodeRemovedFromConnection(
           toNode,
           connectionField.typeIdentifier,

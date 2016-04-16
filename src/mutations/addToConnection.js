@@ -60,11 +60,9 @@ export default function (
         connectionField.typeIdentifier,
         args.toId)
       .then(({fromNode, toNode}) => {
-        // todo: also remove from backRelation when removed from relation
         // add 1-1 connection if backRelation is present
         if (connectionField.backRelationName) {
           toNode[`${connectionField.backRelationName}Id`] = args.fromId
-          console.log('toNode', toNode)
           return backend.updateNode(
             connectionField.typeIdentifier,
             args.toId,

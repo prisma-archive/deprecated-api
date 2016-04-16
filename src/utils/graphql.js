@@ -36,7 +36,7 @@ export function getRelationFields (args: { [key: string]: any }, clientSchema: C
 }
 
 export function convertInputFieldsToInternalIds (
-  args: { [key: string]: any }, clientSchema: ClientSchema
+  args: { [key: string]: any }, clientSchema: ClientSchema, alsoConvert: [string] = []
   ): { [key: string]: any } {
   const fieldsToConvert = getRelationFields(args, clientSchema)
   fieldsToConvert.forEach((field) => {
@@ -46,6 +46,10 @@ export function convertInputFieldsToInternalIds (
   if (args.id) {
     args.id = fromGlobalId(args.id).id
   }
+
+  alsoConvert.forEach((fieldName) => {
+    args[fieldName] = fromGlobalId(args[fieldName]).id
+  })
 
   return args
 }
