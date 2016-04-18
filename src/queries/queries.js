@@ -7,19 +7,26 @@ import {
 
 import type {
   AllTypes,
-  GraphQLFields
+  GraphQLFields,
+  SchemaType
 } from '../utils/definitions.js'
 
 import {
   fromGlobalId
 } from 'graphql-relay'
 
+import {
+  mergeObjects
+} from '../utils/object.js'
+
 export function createQueryEndpoints (
-  input: AllTypes
+  input: AllTypes,
+  schemaType: SchemaType
 ): GraphQLFields {
-  const queryFields = {}
+  var queryFields = {}
   const clientTypes = input.clientTypes
   const viewerType = input.viewerType
+  const viewerFields = input.viewerFields
 
   for (const modelName in clientTypes) {
     // query single model by id
@@ -37,11 +44,16 @@ export function createQueryEndpoints (
     }
   }
 
-  queryFields['viewer'] = {
-    type: viewerType,
-    resolve: (_, args, { rootValue: { backend } }) => (
-      backend.user()
-    )
+  if (schemaType === 'RELAY') {
+    queryFields['viewer'] = {
+      type: viewerType,
+      resolve: (_, args, { rootValue: { backend } }) => (
+        backend.user()
+      )
+    }
+  }
+  if (schemaType === 'SIMPLE') {
+    queryFields = mergeObjects(queryFields, viewerFields)
   }
 
   queryFields['node'] = {

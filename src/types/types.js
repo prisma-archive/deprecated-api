@@ -10,7 +10,8 @@ import {
   GraphQLNonNull,
   GraphQLInterfaceType,
   GraphQLEnumType,
-  GraphQLInputObjectType
+  GraphQLInputObjectType,
+  GraphQLList
 } from 'graphql'
 
 import {
@@ -41,7 +42,8 @@ import type {
   ClientSchemaField,
   ClientTypes,
   AllTypes,
-  GraphQLFields
+  GraphQLFields,
+  SchemaType
 } from '../utils/definitions.js'
 
 function getFilterPairsFromFilterArgument (filter) {
@@ -134,7 +136,7 @@ function wrapWithNonNull (
     })
 }
 
-export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
+export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: SchemaType): AllTypes {
   const enumTypes = {}
   function parseClientType (field: ClientSchemaField, modelName: string) {
     switch (field.typeIdentifier) {
@@ -160,10 +162,6 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
   }
 
   function getValueOrDefault (obj, field) {
-    console.log(
-      obj[field.fieldName],
-      field.defaultValue,
-      parseValue(field.defaultValue, field.typeIdentifier))
     return obj[field.fieldName] || (field.defaultValue ? parseValue(field.defaultValue, field.typeIdentifier) : null)
   }
 
@@ -242,6 +240,15 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
     )
   }
 
+  const simpleConnectionArgs = {
+    skip: {
+      type: GraphQLInt
+    },
+    take: {
+      type: GraphQLInt
+    }
+  }
+
   function generateQueryFilterInputArguments (
     clientSchema: ClientSchema
   ): GraphQLObjectType {
@@ -254,7 +261,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
     )
 
     return mergeObjects(
-      connectionArgs,
+      schemaType === 'RELAY' ? connectionArgs : simpleConnectionArgs,
       {
         filter: {
           type: new GraphQLInputObjectType({
@@ -349,7 +356,9 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
   const viewerFields = {}
   for (const modelName in clientTypes) {
     viewerFields[`all${modelName}s`] = {
-      type: clientTypes[modelName].connectionType,
+      type: schemaType === 'RELAY'
+        ? clientTypes[modelName].connectionType
+        : new GraphQLList(clientTypes[modelName].objectType),
       args: clientTypes[modelName].queryFilterInputArguments,
       resolve: (_, args, { operation, rootValue: { currentUser, backend } }) => (
         backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser, operation)
@@ -380,11 +389,18 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
               }
             }
 
-            const { edges, pageInfo } = connectionFromArray(array, args)
-            return {
-              edges,
-              pageInfo,
-              totalCount: array.length
+            if (schemaType === 'RELAY') {
+              const { edges, pageInfo } = connectionFromArray(array, args)
+              return {
+                edges,
+                pageInfo,
+                totalCount: array.length
+              }
+            } else {
+              const skip = args.skip || 0
+              const take = args.take || array.length
+
+              return array.slice(skip, skip + take)
             }
           })
       )
@@ -399,7 +415,9 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
   if (clientTypes.User) {
     viewerFields.user = {
       type: clientTypes.User.objectType,
-      resolve: (root) => root
+      resolve: (_, args, { rootValue: { backend } }) => (
+        backend.user()
+      )
     }
   }
 
@@ -409,5 +427,5 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
     interfaces: [NodeInterfaceType]
   })
 
-  return {clientTypes, NodeInterfaceType, viewerType}
+  return {clientTypes, NodeInterfaceType, viewerType, viewerFields}
 }

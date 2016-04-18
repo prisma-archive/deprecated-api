@@ -2,7 +2,8 @@
 
 import type {
   GraphQLFields,
-  AllTypes
+  AllTypes,
+  SchemaType
 } from '../utils/definitions.js'
 
 import { isScalar } from '../utils/graphql.js'
@@ -14,7 +15,8 @@ import addToConnection from './addToConnection'
 import removeFromConnection from './removeFromConnection'
 
 export function createMutationEndpoints (
-  input: AllTypes
+  input: AllTypes,
+  schemaType: SchemaType
 ): GraphQLFields {
   const fields = {}
   const clientTypes = input.clientTypes
@@ -23,9 +25,9 @@ export function createMutationEndpoints (
   fields.signinUser = signinUser(viewerType)
 
   for (const modelName in clientTypes) {
-    fields[`create${modelName}`] = createNode(viewerType, clientTypes, modelName)
-    fields[`update${modelName}`] = updateNode(viewerType, clientTypes, modelName)
-    fields[`delete${modelName}`] = deleteNode(viewerType, clientTypes, modelName)
+    fields[`create${modelName}`] = createNode(viewerType, clientTypes, modelName, schemaType)
+    fields[`update${modelName}`] = updateNode(viewerType, clientTypes, modelName, schemaType)
+    fields[`delete${modelName}`] = deleteNode(viewerType, clientTypes, modelName, schemaType)
 
     clientTypes[modelName].clientSchema.fields
     .filter((field) => field.isList && !isScalar(field.typeIdentifier))

@@ -1,7 +1,8 @@
 /* @flow */
 
 import type {
-  ClientTypes
+  ClientTypes,
+  SchemaType
 } from '../utils/definitions.js'
 
 import {
@@ -18,12 +19,14 @@ import {
   mutationWithClientMutationId
 } from 'graphql-relay'
 
+import simpleMutation from './simpleMutation.js'
+
 import { getFieldNameFromModelName, convertInputFieldsToInternalIds } from '../utils/graphql.js'
 
 export default function (
-  viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string
+  viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string, schemaType: SchemaType
   ): GraphQLObjectType {
-  return mutationWithClientMutationId({
+  const config = {
     name: `Delete${modelName}`,
     outputFields: {
       [getFieldNameFromModelName(modelName)]: {
@@ -117,5 +120,13 @@ export default function (
             )))
         })
     }
-  })
+  }
+
+  if (schemaType === 'SIMPLE') {
+    return simpleMutation(config,
+      clientTypes[modelName].objectType,
+      (root) => root[getFieldNameFromModelName(modelName)])
+  } else {
+    return mutationWithClientMutationId(config)
+  }
 }

@@ -1,7 +1,8 @@
 /* @flow */
 
 import type {
-  ClientTypes
+  ClientTypes,
+  SchemaType
 } from '../utils/definitions.js'
 
 import {
@@ -15,10 +16,12 @@ import {
 
 import { getFieldNameFromModelName, convertInputFieldsToInternalIds } from '../utils/graphql.js'
 
+import simpleMutation from './simpleMutation.js'
+
 export default function (
-  viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string
+  viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string, schemaType: SchemaType
   ): GraphQLObjectType {
-  return mutationWithClientMutationId({
+  const config = {
     name: `Update${modelName}`,
     outputFields: {
       [getFieldNameFromModelName(modelName)]: {
@@ -156,5 +159,11 @@ export default function (
         )
       })
     }
-  })
+  }
+
+  if (schemaType === 'SIMPLE') {
+    return simpleMutation(config, clientTypes[modelName].objectType, (root) => root.node)
+  } else {
+    return mutationWithClientMutationId(config)
+  }
 }

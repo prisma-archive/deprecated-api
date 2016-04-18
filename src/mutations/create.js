@@ -5,7 +5,8 @@ import {
 } from 'graphql'
 
 import type {
-  ClientTypes
+  ClientTypes,
+  SchemaType
 } from '../utils/definitions.js'
 
 import {
@@ -20,14 +21,16 @@ import {
   convertInputFieldsToInternalIds
 } from '../utils/graphql.js'
 
+import simpleMutation from './simpleMutation.js'
+
 function getFieldsOfType (args, clientSchema, typeIdentifier) {
   return clientSchema.fields.filter((field) => field.typeIdentifier === typeIdentifier && args[field.fieldName])
 }
 
 export default function (
-  viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string
+  viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string, schemaType: SchemaType
   ): GraphQLObjectType {
-  return mutationWithClientMutationId({
+  const config = {
     name: `Create${modelName}`,
     outputFields: {
       [getFieldNameFromModelName(modelName)]: {
@@ -103,5 +106,11 @@ export default function (
       })
       .then((node) => ({ node }))
     }
-  })
+  }
+
+  if (schemaType === 'SIMPLE') {
+    return simpleMutation(config, clientTypes[modelName].objectType, (root) => root.node)
+  } else {
+    return mutationWithClientMutationId(config)
+  }
 }

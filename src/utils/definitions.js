@@ -20,7 +20,8 @@ export type ClientTypes = {
 export type AllTypes = {
   clientTypes: ClientTypes,
   NodeInterfaceType: GraphQLInterfaceType,
-  viewerType: GraphQLObjectType
+  viewerType: GraphQLObjectType,
+  viewerFields: GraphQLFields
 }
 
 export type GraphQLFields = {
@@ -52,6 +53,8 @@ export type ClientSchemaField = {
   isList: boolean,
   isUnique: boolean,
   isSystem: boolean,
-  defaultValue: string,
+  defaultValue: ?string,
   permissions: [permission]
 }
+
+export type SchemaType = 'SIMPLE' | 'RELAY';
