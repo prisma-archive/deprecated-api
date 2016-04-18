@@ -32,7 +32,8 @@ import {
 import {
   isScalar,
   convertInputFieldsToInternalIds,
-  externalIdFromQueryInfo
+  externalIdFromQueryInfo,
+  parseValue
 } from '../utils/graphql.js'
 
 import type {
@@ -158,6 +159,14 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
     }
   }
 
+  function getValueOrDefault (obj, field) {
+    console.log(
+      obj[field.fieldName],
+      field.defaultValue,
+      parseValue(field.defaultValue, field.typeIdentifier))
+    return obj[field.fieldName] || (field.defaultValue ? parseValue(field.defaultValue, field.typeIdentifier) : null)
+  }
+
   function generateObjectType (
     clientSchema: ClientSchema,
     NodeInterfaceType: GraphQLInterfaceType
@@ -168,8 +177,8 @@ export function createTypes (clientSchemas: Array<ClientSchema>): AllTypes {
       (field) => {
         const type = parseClientType(field, clientSchema.modelName)
         const resolve = field.fieldName === 'id'
-          ? (obj) => toGlobalId(clientSchema.modelName, obj[field.fieldName])
-          : (obj) => obj[field.fieldName]
+          ? (obj) => toGlobalId(clientSchema.modelName, getValueOrDefault(obj, field))
+          : (obj) => getValueOrDefault(obj, field)
 
         return {type, resolve}
       }

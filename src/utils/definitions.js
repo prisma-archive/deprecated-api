@@ -52,5 +52,6 @@ export type ClientSchemaField = {
   isList: boolean,
   isUnique: boolean,
   isSystem: boolean,
+  defaultValue: string,
   permissions: [permission]
 }
