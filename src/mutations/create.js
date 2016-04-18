@@ -77,14 +77,12 @@ export default function (
                 node.id)
               .then(({fromNode, toNode}) => fromNode)
             } else {
-              console.log('currentUser', currentUser)
               return backend.node(
                 field.typeIdentifier,
                 node[`${field.fieldName}Id`],
                 clientTypes[field.typeIdentifier].clientSchema,
                 currentUser)
               .then((relationNode) => {
-                console.log('relationNode', relationNode)
                 relationNode[`${field.backRelationName}Id`] = node.id
                 return backend.updateNode(
                   field.typeIdentifier,

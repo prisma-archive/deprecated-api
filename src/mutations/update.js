@@ -72,8 +72,6 @@ export default function (
       }
 
       function getChangedRelationFields (oldNode, updateNode) {
-        console.log('OLD NODE', oldNode)
-        console.log('UPDATE NODE', updateNode)
         const relationFields = clientTypes[modelName].clientSchema.fields
           .filter((field) => field.backRelationName)
 
@@ -93,7 +91,6 @@ export default function (
               clientTypes[field.typeIdentifier].clientSchema,
               currentUser)
           } else {
-            console.log('REMOVE FROM LIST', field.typeIdentifier, node.id, field.fieldName)
             return backend.removeRelation(
               field.typeIdentifier,
               relationNode.id,

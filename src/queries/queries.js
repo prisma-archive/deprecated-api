@@ -59,7 +59,6 @@ export function createQueryEndpoints (
 
       return backend.node(type, internalId, clientTypes[type].clientSchema, currentUser, operation)
       .then((node) => {
-        console.log('node', node)
         return node
       })
     }
