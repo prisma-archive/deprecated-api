@@ -139,13 +139,14 @@ function wrapWithNonNull (
 export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: SchemaType): AllTypes {
   const enumTypes = {}
   function parseClientType (field: ClientSchemaField, modelName: string) {
+    const listify = field.isList ? (type) => new GraphQLList(type) : (type) => type
     switch (field.typeIdentifier) {
-      case 'String': return GraphQLString
-      case 'Boolean': return GraphQLBoolean
-      case 'Int': return GraphQLInt
-      case 'Float': return GraphQLFloat
-      case 'GraphQLID': return GraphQLID
-      case 'Password': return GraphQLString
+      case 'String': return listify(GraphQLString)
+      case 'Boolean': return listify(GraphQLBoolean)
+      case 'Int': return listify(GraphQLInt)
+      case 'Float': return listify(GraphQLFloat)
+      case 'GraphQLID': return listify(GraphQLID)
+      case 'Password': return listify(GraphQLString)
       case 'Enum' :
         const enumTypeName = `${modelName}_${field.fieldName}`
         if (!enumTypes[enumTypeName]) {
@@ -155,7 +156,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
           })
         }
 
-        return enumTypes[enumTypeName]
+        return listify(enumTypes[enumTypeName])
       // NOTE this marks a relation type which will be overwritten by `injectRelationships`
       default: return { __isRelation: true, typeIdentifier: field.typeIdentifier }
     }
@@ -163,6 +164,18 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
 
   function getValueOrDefault (obj, field) {
     return obj[field.fieldName] || (field.defaultValue ? parseValue(field.defaultValue, field.typeIdentifier) : null)
+  }
+
+  function ensureIsList (value) {
+    if (value === null || value === undefined) {
+      return value
+    }
+
+    if (Array.isArray(value)) {
+      return value
+    }
+
+    return [value]
   }
 
   function generateObjectType (
@@ -176,7 +189,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
         const type = parseClientType(field, clientSchema.modelName)
         const resolve = field.fieldName === 'id'
           ? (obj) => toGlobalId(clientSchema.modelName, getValueOrDefault(obj, field))
-          : (obj) => getValueOrDefault(obj, field)
+          : (obj) => field.isList ? ensureIsList(getValueOrDefault(obj, field)) : getValueOrDefault(obj, field)
 
         return {type, resolve}
       }
