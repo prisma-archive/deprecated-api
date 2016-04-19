@@ -33,10 +33,10 @@ export function createMutationEndpoints (
     .filter((field) => field.isList && !isScalar(field.typeIdentifier))
     .forEach((connectionField) => {
       fields[`add${connectionField.typeIdentifier}To${connectionField.fieldName}ConnectionOn${modelName}`] =
-        addToConnection(viewerType, clientTypes, modelName, connectionField)
+        addToConnection(viewerType, clientTypes, modelName, connectionField, schemaType)
 
       fields[`remove${connectionField.typeIdentifier}From${connectionField.fieldName}ConnectionOn${modelName}`] =
-        removeFromConnection(viewerType, clientTypes, modelName, connectionField)
+        removeFromConnection(viewerType, clientTypes, modelName, connectionField, schemaType)
     })
   }
 

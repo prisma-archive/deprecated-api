@@ -2,7 +2,8 @@
 
 import type {
   ClientTypes,
-  ClientSchemaField
+  ClientSchemaField,
+  SchemaType
 } from '../utils/definitions.js'
 
 import {
@@ -17,10 +18,16 @@ import {
 
 import { getFieldNameFromModelName, convertInputFieldsToInternalIds } from '../utils/graphql.js'
 
+import simpleMutation from './simpleMutation.js'
+
 export default function (
-  viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string, connectionField: ClientSchemaField
+  viewerType: GraphQLObjectType,
+  clientTypes: ClientTypes,
+  modelName: string,
+  connectionField: ClientSchemaField,
+  schemaType: SchemaType
   ): GraphQLObjectType {
-  return mutationWithClientMutationId({
+  const config = {
     name: `Remove${connectionField.typeIdentifier}From${connectionField.fieldName}ConnectionOn${modelName}`,
     outputFields: {
       [getFieldNameFromModelName(modelName)]: {
@@ -89,5 +96,13 @@ export default function (
       })
       .then(({fromNode, toNode}) => ({[getFieldNameFromModelName(modelName)]: fromNode}))
     }
-  })
+  }
+
+  if (schemaType === 'SIMPLE') {
+    return simpleMutation(config,
+      clientTypes[modelName].objectType,
+      (root) => root[getFieldNameFromModelName(modelName)])
+  } else {
+    return mutationWithClientMutationId(config)
+  }
 }

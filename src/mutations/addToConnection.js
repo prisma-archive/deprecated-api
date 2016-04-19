@@ -8,7 +8,8 @@ import {
 
 import type {
   ClientTypes,
-  ClientSchemaField
+  ClientSchemaField,
+  SchemaType
 } from '../utils/definitions.js'
 
 import {
@@ -18,10 +19,16 @@ import {
 
 import { getFieldNameFromModelName, convertInputFieldsToInternalIds } from '../utils/graphql.js'
 
+import simpleMutation from './simpleMutation.js'
+
 export default function (
-  viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string, connectionField: ClientSchemaField
+  viewerType: GraphQLObjectType,
+  clientTypes: ClientTypes,
+  modelName: string,
+  connectionField: ClientSchemaField,
+  schemaType: SchemaType
   ): GraphQLObjectType {
-  return mutationWithClientMutationId({
+  const config = {
     name: `Add${connectionField.typeIdentifier}To${connectionField.fieldName}ConnectionOn${modelName}`,
     outputFields: {
       [getFieldNameFromModelName(modelName)]: {
@@ -51,7 +58,7 @@ export default function (
       }
     },
     mutateAndGetPayload: (args, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
-      args = convertInputFieldsToInternalIds(args, clientTypes[modelName].clientSchema)
+      args = convertInputFieldsToInternalIds(args, clientTypes[modelName].clientSchema, ['fromId', 'toId'])
 
       return backend.createRelation(
         modelName,
@@ -84,5 +91,11 @@ export default function (
       })
       .then(({fromNode, toNode}) => ({fromNode, toNode}))
     }
-  })
+  }
+
+  if (schemaType === 'SIMPLE') {
+    return simpleMutation(config, clientTypes[modelName].objectType, (root) => root.fromNode)
+  } else {
+    return mutationWithClientMutationId(config)
+  }
 }
