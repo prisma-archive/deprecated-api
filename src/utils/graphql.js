@@ -44,8 +44,9 @@ export function getRelationFields (args: { [key: string]: any }, clientSchema: C
 }
 
 export function convertInputFieldsToInternalIds (
-  args: { [key: string]: any }, clientSchema: ClientSchema, alsoConvert: [string] = []
+  originalArgs: { [key: string]: any }, clientSchema: ClientSchema, alsoConvert: [string] = []
   ): { [key: string]: any } {
+  const args = deepcopy(originalArgs)
   const fieldsToConvert = getRelationFields(args, clientSchema)
   fieldsToConvert.forEach((field) => {
     args[`${field.fieldName}Id`] = fromGlobalId(args[`${field.fieldName}Id`]).id

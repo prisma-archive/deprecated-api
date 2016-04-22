@@ -32,6 +32,9 @@ export default function (
       [getFieldNameFromModelName(modelName)]: {
         type: clientTypes[modelName].objectType
       },
+      deletedId: {
+        type: new GraphQLNonNull(GraphQLID)
+      },
       viewer: {
         type: viewerType,
         resolve: (_, args, { rootValue: { backend } }) => (
@@ -44,8 +47,8 @@ export default function (
         type: new GraphQLNonNull(GraphQLID)
       }
     },
-    mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
-      node = convertInputFieldsToInternalIds(node, clientTypes[modelName].clientSchema)
+    mutateAndGetPayload: (args, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
+      const node = convertInputFieldsToInternalIds(args, clientTypes[modelName].clientSchema)
 
       function getBackRelationNodes (relationField, nodeToDelete) {
         if (relationField.isList) {
@@ -116,7 +119,7 @@ export default function (
                     webhooksProcessor.nodeDeleted(node, modelName)
                     return node
                   })
-                  .then((node) => ({[getFieldNameFromModelName(modelName)]: node}))
+                  .then((node) => ({[getFieldNameFromModelName(modelName)]: node, deletedId: args.id}))
             )))
         })
     }
