@@ -1,5 +1,11 @@
 /* @flow */
 
+import type {
+  SchemaType
+} from '../utils/definitions.js'
+
+import simpleMutation from './simpleMutation.js'
+
 import {
   GraphQLNonNull,
   GraphQLString,
@@ -11,9 +17,9 @@ import {
 } from 'graphql-relay'
 
 export default function (
-  viewerType: GraphQLObjectType
+  viewerType: GraphQLObjectType, schemaType: SchemaType
   ): GraphQLObjectType {
-  return mutationWithClientMutationId({
+  const config = {
     name: 'SigninUser',
     outputFields: {
       token: {
@@ -52,5 +58,20 @@ export default function (
         }
       }))
     )
-  })
+  }
+
+  if (schemaType === 'SIMPLE') {
+    return simpleMutation(config,
+      new GraphQLObjectType({
+        name: 'SigninUserPayload',
+        fields: {
+          token: {
+            type: new GraphQLNonNull(GraphQLString)
+          }
+        }
+      }),
+      (root) => ({token: root.token}))
+  } else {
+    return mutationWithClientMutationId(config)
+  }
 }

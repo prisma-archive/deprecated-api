@@ -22,7 +22,7 @@ export function createMutationEndpoints (
   const clientTypes = input.clientTypes
   const viewerType = input.viewerType
 
-  fields.signinUser = signinUser(viewerType)
+  fields.signinUser = signinUser(viewerType, schemaType)
 
   for (const modelName in clientTypes) {
     fields[`create${modelName}`] = createNode(viewerType, clientTypes, modelName, schemaType)
