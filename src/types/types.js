@@ -163,7 +163,15 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
   }
 
   function getValueOrDefault (obj, field) {
-    return obj[field.fieldName] || (field.defaultValue ? parseValue(field.defaultValue, field.typeIdentifier) : null)
+    if (obj[field.fieldName] !== undefined && obj[field.fieldName] !== null) {
+      return obj[field.fieldName]
+    } else {
+      if (field.defaultValue !== undefined && field.defaultValue !== null) {
+        return field.defaultValue
+      } else {
+        return null
+      }
+    }
   }
 
   function ensureIsList (value) {
