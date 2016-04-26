@@ -19,7 +19,8 @@ import {
   getFieldNameFromModelName,
   getFieldsForBackRelations,
   patchConnectedNodesOnIdFields,
-  convertInputFieldsToInternalIds
+  convertInputFieldsToInternalIds,
+  convertIdToExternal
 } from '../utils/graphql.js'
 
 import simpleMutation from './simpleMutation.js'
@@ -102,8 +103,7 @@ export default function (
       ))
       .then(({connectedNodes, node}) => {
         const patchedNode = patchConnectedNodesOnIdFields(node, connectedNodes, clientTypes[modelName].clientSchema)
-        patchedNode.id = toGlobalId(modelName, patchedNode.id)
-        webhooksProcessor.nodeCreated(patchedNode, modelName)
+        webhooksProcessor.nodeCreated(convertIdToExternal(modelName, patchedNode), modelName)
         return node
       })
       .then((node) => ({ node }))

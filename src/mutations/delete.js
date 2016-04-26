@@ -23,7 +23,10 @@ import {
 
 import simpleMutation from './simpleMutation.js'
 
-import { getFieldNameFromModelName, convertInputFieldsToInternalIds } from '../utils/graphql.js'
+import { 
+  getFieldNameFromModelName,
+  convertInputFieldsToInternalIds,
+  convertIdToExternal } from '../utils/graphql.js'
 
 export default function (
   viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string, schemaType: SchemaType
@@ -118,9 +121,7 @@ export default function (
                 ).then(() =>
                   backend.deleteNode(modelName, node.id, clientTypes[modelName].clientSchema, currentUser)
                   .then((node) => {
-                    const nodeWithExternalId = deepcopy(node)
-                    nodeWithExternalId.id = toGlobalId(modelName, nodeWithExternalId.id)
-                    webhooksProcessor.nodeDeleted(nodeWithExternalId, modelName)
+                    webhooksProcessor.nodeDeleted(convertIdToExternal(modelName, node), modelName)
                     return node
                   })
                   .then((node) => ({[getFieldNameFromModelName(modelName)]: node, deletedId: args.id}))

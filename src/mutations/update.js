@@ -14,7 +14,10 @@ import {
   cursorForObjectInConnection
 } from 'graphql-relay'
 
-import { getFieldNameFromModelName, convertInputFieldsToInternalIds } from '../utils/graphql.js'
+import { 
+  getFieldNameFromModelName,
+  convertInputFieldsToInternalIds,
+  convertIdToExternal } from '../utils/graphql.js'
 
 import simpleMutation from './simpleMutation.js'
 
@@ -153,7 +156,7 @@ export default function (
         .then(() =>
           backend.updateNode(modelName, node.id, node, clientTypes[modelName].clientSchema, currentUser)
           .then((node) => {
-            webhooksProcessor.nodeUpdated(node, modelName)
+            webhooksProcessor.nodeUpdated(convertIdToExternal(modelName, node), modelName)
             return {node}
           })
         )

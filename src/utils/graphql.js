@@ -8,7 +8,8 @@ import type {
 } from './definitions.js'
 
 import {
-  fromGlobalId
+  fromGlobalId,
+  toGlobalId
 } from 'graphql-relay'
 
 export function isValidName (name: string): boolean {
@@ -63,6 +64,13 @@ export function convertInputFieldsToInternalIds (
   return args
 }
 
+export function convertIdToExternal(typeIdentifier: string, node: Object): Object {
+  const nodeWithExternalId = deepcopy(node)
+  nodeWithExternalId.id = toGlobalId(typeIdentifier, nodeWithExternalId.id)
+
+  return nodeWithExternalId
+}
+
 export function patchConnectedNodesOnIdFields (
   node: Object, connectedNodes: [Object], clientSchema: ClientSchema
   ): Object {
@@ -70,7 +78,9 @@ export function patchConnectedNodesOnIdFields (
   getRelationFields(node, clientSchema).forEach((field) => {
     const connectedNode = connectedNodes.filter((x) => x.id === node[`${field.fieldName}Id`])[0]
     if (connectedNode) {
-      nodeClone[field.fieldName] = connectedNode
+      const nodeWithConvertedId = convertIdToExternal(field.typeIdentifier, connectedNode)
+      nodeClone[field.fieldName] = nodeWithConvertedId
+      nodeClone[`${field.fieldName}Id`] = nodeWithConvertedId.id
     }
   })
 
