@@ -1,4 +1,5 @@
 /* @flow */
+import deepcopy from 'deepcopy'
 
 import type {
   ClientTypes,
@@ -16,7 +17,8 @@ import {
 } from 'graphql'
 
 import {
-  mutationWithClientMutationId
+  mutationWithClientMutationId,
+  toGlobalId
 } from 'graphql-relay'
 
 import simpleMutation from './simpleMutation.js'
@@ -116,7 +118,9 @@ export default function (
                 ).then(() =>
                   backend.deleteNode(modelName, node.id, clientTypes[modelName].clientSchema, currentUser)
                   .then((node) => {
-                    webhooksProcessor.nodeDeleted(node, modelName)
+                    const nodeWithExternalId = deepcopy(node)
+                    nodeWithExternalId.id = toGlobalId(modelName, nodeWithExternalId.id)
+                    webhooksProcessor.nodeDeleted(nodeWithExternalId, modelName)
                     return node
                   })
                   .then((node) => ({[getFieldNameFromModelName(modelName)]: node, deletedId: args.id}))

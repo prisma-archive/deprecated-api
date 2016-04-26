@@ -11,7 +11,8 @@ import type {
 
 import {
   mutationWithClientMutationId,
-  offsetToCursor
+  offsetToCursor,
+  toGlobalId
 } from 'graphql-relay'
 
 import {
@@ -101,6 +102,7 @@ export default function (
       ))
       .then(({connectedNodes, node}) => {
         const patchedNode = patchConnectedNodesOnIdFields(node, connectedNodes, clientTypes[modelName].clientSchema)
+        patchedNode.id = toGlobalId(modelName, patchedNode.id)
         webhooksProcessor.nodeCreated(patchedNode, modelName)
         return node
       })
