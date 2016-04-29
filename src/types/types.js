@@ -395,19 +395,22 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
             if (args.orderBy) {
               const order = args.orderBy.indexOf('_DESC') > -1 ? 'DESC' : 'ASC'
               const fieldName = args.orderBy.split(`_${order}`)[0]
-              if (order === 'DESC') {
-                array = array.sort((a, b) => {
-                  return ((typeof a[fieldName]) === 'string')
-                  ? b[fieldName].toLowerCase().localeCompare(a[fieldName].toLowerCase())
-                  : b[fieldName] - a[fieldName]
-                })
-              } else {
-                array = array.sort((a, b) => {
-                  return ((typeof a[fieldName]) === 'string')
-                  ? a[fieldName].toLowerCase().localeCompare(b[fieldName].toLowerCase())
-                  : a[fieldName] - b[fieldName]
-                })
-              }
+              const field = clientTypes[modelName].clientSchema.fields.filter((field) => field.fieldName === fieldName)[0]
+              array = array.sort((a, b) => {
+                const [aValue, bValue] = (order === 'DESC' ? [a,b] : [b,a])
+                .map((object) => getValueOrDefault(object, field))
+
+                // strings are compared lexicographically. Nulls are sorted last
+                if (aValue === null) {
+                  return 1
+                }
+                if (bValue === null) {
+                  return 0
+                }
+                return ((typeof aValue) === 'string' && (typeof bValue) === 'string')
+                ? bValue.toLowerCase().localeCompare(aValue.toLowerCase())
+                : b[fieldName] - a[fieldName]
+              })
             }
 
             if (schemaType === 'RELAY') {
