@@ -54,7 +54,8 @@ export type ClientSchemaField = {
   isUnique: boolean,
   isSystem: boolean,
   defaultValue: ?string,
-  permissions: [permission]
+  permissions: [permission],
+  description: ?string
 }
 
 export type SchemaType = 'SIMPLE' | 'RELAY';

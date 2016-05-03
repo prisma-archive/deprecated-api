@@ -33,8 +33,7 @@ import {
 import {
   isScalar,
   convertInputFieldsToInternalIds,
-  externalIdFromQueryInfo,
-  parseValue
+  externalIdFromQueryInfo
 } from '../utils/graphql.js'
 
 import type {
@@ -194,6 +193,17 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
     return [value]
   }
 
+  function generateDescription (field) {
+    const defaultValue = field.defaultValue !== undefined ? `**Default value: '${field.defaultValue}'**` : ''
+    const description =
+    // note: this is markdown syntax...
+    `${defaultValue}
+
+    ${field.description || ''}`
+
+    return description
+  }
+
   function generateObjectType (
     clientSchema: ClientSchema,
     NodeInterfaceType: GraphQLInterfaceType
@@ -207,7 +217,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
           ? (obj) => toGlobalId(clientSchema.modelName, getValueOrDefault(obj, field))
           : (obj) => field.isList ? ensureIsList(getValueOrDefault(obj, field)) : getValueOrDefault(obj, field)
 
-        return {type, resolve}
+        return {type, resolve, description: generateDescription(field)}
       }
     )
 
@@ -232,7 +242,9 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
       (field) => ({
         type: (field.isRequired && !(forceFieldsOptional && (forceIdFieldOptional || field.fieldName !== 'id')))
           ? new GraphQLNonNull(parseClientType(field, clientSchema.modelName))
-          : parseClientType(field, clientSchema.modelName)
+          : parseClientType(field, clientSchema.modelName),
+        description: generateDescription(field),
+        defaultValue: field.defaultValue !== undefined ? field.defaultValue : null
       })
     )
 
@@ -241,7 +253,9 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
       onetoOneFields,
       (field) => `${field.fieldName}Id`,
       (field) => ({
-        type: (field.isRequired && !forceFieldsOptional) ? new GraphQLNonNull(GraphQLID) : GraphQLID
+        type: (field.isRequired && !forceFieldsOptional) ? new GraphQLNonNull(GraphQLID) : GraphQLID,
+        description: generateDescription(field),
+        defaultValue: field.defaultValue !== undefined ? field.defaultValue : null
       }))
 
     return mergeObjects(scalarArguments, oneToOneArguments)
