@@ -64,7 +64,8 @@ function getFilterPairsFromFilterArgument (filter) {
 function injectRelationships (
   objectType: GraphQLObjectType,
   clientSchema: ClientSchema,
-  allClientTypes: ClientTypes
+  allClientTypes: ClientTypes,
+  schemaType: SchemaType
 ): void {
   const objectTypeFields = objectType._typeConfig.fields
 
@@ -77,8 +78,9 @@ function injectRelationships (
 
       // 1:n relationship
       if (clientSchemaField.isList) {
-        const connectionType = allClientTypes[typeIdentifier].connectionType
-        objectTypeField.type = connectionType
+        objectTypeField.type = schemaType === 'RELAY'
+          ? allClientTypes[typeIdentifier].connectionType
+          : new GraphQLList(allClientTypes[typeIdentifier].objectType)
         objectTypeField.args = allClientTypes[typeIdentifier].queryFilterInputArguments
         objectTypeField.resolve = (obj, args, { operation, rootValue: { backend, currentUser } }) => (
           backend.allNodesByRelation(
@@ -97,12 +99,18 @@ function injectRelationships (
                 .every((filter) => x[filter.field] === filter.value))
             }
 
-            const { edges, pageInfo } = connectionFromArray(array, args)
+            if (schemaType === 'RELAY') {
+              const { edges, pageInfo } = connectionFromArray(array, args)
+              return {
+                edges,
+                pageInfo,
+                totalCount: array.length
+              }
+            } else {
+              const skip = args.skip || 0
+              const take = args.take || array.length
 
-            return {
-              edges,
-              pageInfo,
-              totalCount: array.length
+              return array.slice(skip, skip + take)
             }
           }).catch(console.log)
         )
@@ -362,7 +370,8 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
     injectRelationships(
       clientTypes[modelName].objectType,
       clientTypes[modelName].clientSchema,
-      clientTypes
+      clientTypes,
+      schemaType
     )
   }
 
@@ -395,9 +404,10 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
             if (args.orderBy) {
               const order = args.orderBy.indexOf('_DESC') > -1 ? 'DESC' : 'ASC'
               const fieldName = args.orderBy.split(`_${order}`)[0]
-              const field = clientTypes[modelName].clientSchema.fields.filter((field) => field.fieldName === fieldName)[0]
+              const field = clientTypes[modelName].clientSchema.fields
+                .filter((field) => field.fieldName === fieldName)[0]
               array = array.sort((a, b) => {
-                const [aValue, bValue] = (order === 'DESC' ? [a,b] : [b,a])
+                const [aValue, bValue] = (order === 'DESC' ? [a, b] : [b, a])
                 .map((object) => getValueOrDefault(object, field))
 
                 // strings are compared lexicographically. Nulls are sorted last
