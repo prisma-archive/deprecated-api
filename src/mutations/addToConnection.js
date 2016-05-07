@@ -60,6 +60,26 @@ export default function (
     mutateAndGetPayload: (args, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
       args = convertInputFieldsToInternalIds(args, clientTypes[modelName].clientSchema, ['fromId', 'toId'])
 
+      if (backend.type === 'sql') {
+        const fromType = modelName
+        const fromFieldName = connectionField.fieldName
+        const fromId = args.fromId
+        const toType = connectionField.typeIdentifier
+        const toFieldName = connectionField.backRelationName
+        const toId = args.toId
+
+        return backend.createRelation(fromType, fromFieldName, fromId, toType, toFieldName, toId)
+        .then(({fromNode, toNode}) => {
+          webhooksProcessor.nodeAddedToConnection(
+            toNode,
+            connectionField.typeIdentifier,
+            fromNode,
+            modelName,
+            connectionField.fieldName)
+          return {fromNode, toNode}
+        })
+      }
+
       return backend.createRelation(
         modelName,
         args.fromId,

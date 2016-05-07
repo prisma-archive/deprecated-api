@@ -41,10 +41,10 @@ export default function (
         type: clientTypes[modelName].edgeType,
         resolve: (root, args, { rootValue: { currentUser, backend } }) =>
         backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser)
-        .then((allNodes) => {
+        .then(({array}) => {
           return ({
             // todo: getting all nodes is not efficient
-            cursor: cursorForObjectInConnection(allNodes, allNodes.filter((x) => x.id === root.node.id)[0]),
+            cursor: cursorForObjectInConnection(array, array.filter((x) => x.id === root.node.id)[0]),
             node: root.node
           })
         })
@@ -141,18 +141,22 @@ export default function (
 
         const changedRelationFields = getChangedRelationFields(oldNode, node)
 
-        return Promise.all(changedRelationFields.map((field) => {
+        return (backend.type === 'sql'
+        // todo: patch relations
+        ? Promise.resolve([])
+        : Promise.all(changedRelationFields.map((field) => {
           const backRelationField = clientTypes[field.typeIdentifier].clientSchema.fields
           .filter((x) => x.fieldName === field.backRelationName)[0]
 
           return getBackRelationNodes(field, oldNode)
           .then((relationNodes) => {
             return Promise.all([
+              // todo: make these work with sql backend
               removeConnections(relationNodes, field, backRelationField),
               addConnections(relationNodes, field, backRelationField)
             ])
           })
-        }))
+        })))
         .then(() =>
           backend.updateNode(modelName, node.id, node, clientTypes[modelName].clientSchema, currentUser)
           .then((node) => {

@@ -1,7 +1,5 @@
 /* @flow */
 
-import deepcopy from 'deepcopy'
-
 import type {
   ClientSchema,
   ClientSchemaField
@@ -11,6 +9,8 @@ import {
   fromGlobalId,
   toGlobalId
 } from 'graphql-relay'
+
+import deepcopy from 'deepcopy'
 
 export function isValidName (name: string): boolean {
   return /^[_a-zA-Z][_a-zA-Z0-9]*$/.test(name)
@@ -50,7 +50,9 @@ export function convertInputFieldsToInternalIds (
   const args = deepcopy(originalArgs)
   const fieldsToConvert = getRelationFields(args, clientSchema)
   fieldsToConvert.forEach((field) => {
-    args[`${field.fieldName}Id`] = fromGlobalId(args[`${field.fieldName}Id`]).id
+    if (args[`${field.fieldName}Id`]) {
+      args[`${field.fieldName}Id`] = fromGlobalId(args[`${field.fieldName}Id`]).id
+    }
   })
 
   if (args.id) {
@@ -64,7 +66,7 @@ export function convertInputFieldsToInternalIds (
   return args
 }
 
-export function convertIdToExternal(typeIdentifier: string, node: Object): Object {
+export function convertIdToExternal (typeIdentifier: string, node: Object): Object {
   const nodeWithExternalId = deepcopy(node)
   nodeWithExternalId.id = toGlobalId(typeIdentifier, nodeWithExternalId.id)
 

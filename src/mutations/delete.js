@@ -111,21 +111,30 @@ export default function (
             return Promise.reject(`'${modelName}' with id '${node.id}' does not exist`)
           }
 
-          // remove indexed and inlined relations to and from this node
-          return setInlinedBackRelationsToNull(nodeToDelete).then(() =>
-            backend.removeAllRelationsTo(modelName, node.id)
-            .then(() =>
-              Promise.all(clientTypes[modelName].clientSchema.fields
-                .filter((field) => field.isList && !isScalar(field.typeIdentifier))
-                .map((field) => backend.removeAllRelationsFrom(modelName, node.id, field.fieldName))
-                ).then(() =>
-                  backend.deleteNode(modelName, node.id, clientTypes[modelName].clientSchema, currentUser)
-                  .then((node) => {
-                    webhooksProcessor.nodeDeleted(convertIdToExternal(modelName, node), modelName)
-                    return node
-                  })
-                  .then((node) => ({[getFieldNameFromModelName(modelName)]: node, deletedId: args.id}))
-            )))
+          if (backend.type === 'sql') {
+            return backend.deleteNode(modelName, node.id, clientTypes[modelName].clientSchema, currentUser)
+              .then((node) => {
+                webhooksProcessor.nodeDeleted(convertIdToExternal(modelName, node), modelName)
+                return node
+              })
+              .then((node) => ({[getFieldNameFromModelName(modelName)]: node, deletedId: args.id}))
+          } else {
+            // remove indexed and inlined relations to and from this node
+            return setInlinedBackRelationsToNull(nodeToDelete).then(() =>
+              backend.removeAllRelationsTo(modelName, node.id)
+              .then(() =>
+                Promise.all(clientTypes[modelName].clientSchema.fields
+                  .filter((field) => field.isList && !isScalar(field.typeIdentifier))
+                  .map((field) => backend.removeAllRelationsFrom(modelName, node.id, field.fieldName))
+                  ).then(() =>
+                    backend.deleteNode(modelName, node.id, clientTypes[modelName].clientSchema, currentUser)
+                    .then((node) => {
+                      webhooksProcessor.nodeDeleted(convertIdToExternal(modelName, node), modelName)
+                      return node
+                    })
+                    .then((node) => ({[getFieldNameFromModelName(modelName)]: node, deletedId: args.id}))
+              )))
+          }
         })
     }
   }

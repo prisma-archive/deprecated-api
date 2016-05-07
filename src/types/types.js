@@ -89,8 +89,23 @@ function injectRelationships (
             args,
             allClientTypes[typeIdentifier].clientSchema,
             currentUser,
-            operation)
+            allClientTypes[clientSchema.modelName].clientSchema)
           .then((array) => {
+            if (backend.type === 'sql') {
+              if (schemaType === 'RELAY') {
+                const edges = array.map((item) => ({node: item, cursor: item.id}))
+                // todo: replace with database cursor
+                const { pageInfo } = connectionFromArray(array, {})
+                return {
+                  edges,
+                  pageInfo,
+                  totalCount: array.length
+                }
+              } else {
+                return array
+              }
+            }
+
             if (args.filter) {
               args.filter = convertInputFieldsToInternalIds(args.filter, allClientTypes[typeIdentifier].clientSchema)
               array = array.filter((x) =>
@@ -406,15 +421,45 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
         ? clientTypes[modelName].connectionType
         : new GraphQLList(clientTypes[modelName].objectType),
       args: clientTypes[modelName].queryFilterInputArguments,
-      resolve: (_, args, { operation, rootValue: { currentUser, backend } }) => (
-        backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser, operation)
-          .then((array) => {
+      resolve: (_, args, { operation, rootValue: { currentUser, backend } }) => {
+        console.log('EARLY: ', args.filter)
+
+        if (args.filter) {
+          args.filter = convertInputFieldsToInternalIds(args.filter, clientTypes[modelName].clientSchema)
+        }
+        return backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser, operation)
+          .then(({array, hasMorePages}) => {
+            // sql: skip all filtering etc
+
+            if (backend.type === 'sql') {
+              if (schemaType === 'RELAY') {
+                const edges = array.map((item) => ({node: item, cursor: toGlobalId(args.orderBy || 'id_ASC', item.id)}))
+                const pageInfo = {
+                  hasNextPage: hasMorePages,
+                  hasPreviousPage: false,
+                  startCursor: edges[0] ? edges[0].cursor : null,
+                  endCursor: edges[edges.length-1] ? edges[edges.length-1].cursor : null
+                }
+                return {
+                  edges,
+                  pageInfo,
+                  totalCount: array.length
+                }
+              } else {
+                return array
+              }
+            }
+
+            console.log('FILTER: ', args.filter)
+            console.log('BEFORE: ', array.length)
+
             if (args.filter) {
-              args.filter = convertInputFieldsToInternalIds(args.filter, clientTypes[modelName].clientSchema)
               array = array.filter((x) =>
                 getFilterPairsFromFilterArgument(args.filter)
                 .every((filter) => x[filter.field] === filter.value))
             }
+
+            console.log('AFTER: ', array.length)
 
             // todo: how should orderBy work with other types than string and number ?
             if (args.orderBy) {
@@ -453,7 +498,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
               return array.slice(skip, skip + take)
             }
           })
-      )
+      }
     }
   }
 

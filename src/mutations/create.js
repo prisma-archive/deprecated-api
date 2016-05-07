@@ -73,6 +73,19 @@ export default function (
             clientTypes[field.typeIdentifier].clientSchema.fields
             .filter((x) => x.fieldName === field.backRelationName)[0]
 
+            if (backend.type === 'sql') {
+              // todo: verify that this works!
+
+              const fromType = modelName
+              const fromFieldName = field.fieldName
+              const fromId = node.id
+              const toType = field.typeIdentifier
+              const toFieldName = field.backRelationName
+              const toId = node[`${field.fieldName}Id`]
+
+              return backend.createRelation(fromType, fromFieldName, fromId, toType, toFieldName, toId)
+            }
+
             if (backRelationField.isList) {
               return backend.createRelation(
                 field.typeIdentifier,
@@ -97,6 +110,7 @@ export default function (
                   currentUser)
               })
             }
+
           })
         )
         .then((connectedNodes) => ({connectedNodes, node}))
