@@ -233,7 +233,8 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
     scalarFilter: (field: ClientSchemaField) => boolean,
     oneToOneFilter: (field: ClientSchemaField) => boolean,
     forceFieldsOptional: boolean = false,
-    forceIdFieldOptional: boolean = false
+    forceIdFieldOptional: boolean = false,
+    allowDefaultValues: boolean = true
   ): GraphQLObjectType {
     const scalarFields = clientSchema.fields.filter(scalarFilter)
     const scalarArguments = mapArrayToObject(
@@ -244,7 +245,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
           ? new GraphQLNonNull(parseClientType(field, clientSchema.modelName))
           : parseClientType(field, clientSchema.modelName),
         description: generateDescription(field),
-        defaultValue: field.defaultValue !== undefined ? field.defaultValue : null
+        defaultValue: field.defaultValue !== undefined && allowDefaultValues ? field.defaultValue : null
       })
     )
 
@@ -255,7 +256,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
       (field) => ({
         type: (field.isRequired && !forceFieldsOptional) ? new GraphQLNonNull(GraphQLID) : GraphQLID,
         description: generateDescription(field),
-        defaultValue: field.defaultValue !== undefined ? field.defaultValue : null
+        defaultValue: field.defaultValue !== undefined && allowDefaultValues ? field.defaultValue : null
       }))
 
     return mergeObjects(scalarArguments, oneToOneArguments)
@@ -300,7 +301,8 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
       (field) => !parseClientType(field, clientSchema.modelName).__isRelation,
       (field) => parseClientType(field, clientSchema.modelName).__isRelation && !field.isList,
       true,
-      true
+      true,
+      false
     )
 
     return mergeObjects(
