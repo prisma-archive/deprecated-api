@@ -84,6 +84,7 @@ export default function (
               const toId = node[`${field.fieldName}Id`]
 
               return backend.createRelation(fromType, fromFieldName, fromId, toType, toFieldName, toId)
+                .then(({fromNode, toNode}) => toNode)
             }
 
             if (backRelationField.isList) {
