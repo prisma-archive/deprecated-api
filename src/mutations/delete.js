@@ -23,7 +23,7 @@ import {
 
 import simpleMutation from './simpleMutation.js'
 
-import { 
+import {
   getFieldNameFromModelName,
   convertInputFieldsToInternalIds,
   convertIdToExternal } from '../utils/graphql.js'
