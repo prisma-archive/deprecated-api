@@ -11,6 +11,7 @@ export type ClientTypes = {
     createMutationInputArguments: GraphQLObjectType,
     updateMutationInputArguments: GraphQLObjectType,
     queryFilterInputArguments: GraphQLObjectType,
+    uniqueQueryInputArguments: GraphQLObjectType,
     edgeType: GraphQLObjectType,
     connectionType: GraphQLObjectType,
     clientSchema: ClientSchema

@@ -243,6 +243,18 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
     })
   }
 
+  function generateUniqueQueryInputArguments (clientSchema: ClientSchema) {
+    const fields = clientSchema.fields.filter((field) => field.isUnique && !field.isList)
+    return mapArrayToObject(
+      fields,
+      (field) => field.fieldName,
+      (field) => ({
+        type: parseClientType(field, clientSchema.modelName),
+        description: generateDescription(field)
+      })
+    )
+  }
+
   function generateObjectMutationInputArguments (
     clientSchema: ClientSchema,
     scalarFilter: (field: ClientSchemaField) => boolean,
@@ -383,6 +395,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
       const createMutationInputArguments = generateCreateObjectMutationInputArguments(clientSchema)
       const updateMutationInputArguments = generateUpdateObjectMutationInputArguments(clientSchema)
       const queryFilterInputArguments = generateQueryFilterInputArguments(clientSchema)
+      const uniqueQueryInputArguments = generateUniqueQueryInputArguments(clientSchema)
       return {
         clientSchema,
         objectType,
@@ -390,7 +403,8 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
         edgeType,
         createMutationInputArguments,
         updateMutationInputArguments,
-        queryFilterInputArguments
+        queryFilterInputArguments,
+        uniqueQueryInputArguments
       }
     },
     clientTypes
@@ -416,14 +430,21 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
 
   const viewerFields = {}
   for (const modelName in clientTypes) {
+    viewerFields[`${modelName}By`] = {
+      type: clientTypes[modelName].objectType,
+      args: clientTypes[modelName].uniqueQueryInputArguments,
+      resolve: (_, args, { operation, rootValue: { currentUser, backend } }) => {
+        return backend.allNodesByType(modelName, {filter: args}, clientTypes[modelName].clientSchema, currentUser, operation)
+        .then(({array}) => array[0])
+      }
+    }
+
     viewerFields[`all${modelName}s`] = {
       type: schemaType === 'RELAY'
         ? clientTypes[modelName].connectionType
         : new GraphQLList(clientTypes[modelName].objectType),
       args: clientTypes[modelName].queryFilterInputArguments,
       resolve: (_, args, { operation, rootValue: { currentUser, backend } }) => {
-        console.log('EARLY: ', args.filter)
-
         if (args.filter) {
           args.filter = convertInputFieldsToInternalIds(args.filter, clientTypes[modelName].clientSchema)
         }
@@ -450,16 +471,11 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
               }
             }
 
-            console.log('FILTER: ', args.filter)
-            console.log('BEFORE: ', array.length)
-
             if (args.filter) {
               array = array.filter((x) =>
                 getFilterPairsFromFilterArgument(args.filter)
                 .every((filter) => x[filter.field] === filter.value))
             }
-
-            console.log('AFTER: ', array.length)
 
             // todo: how should orderBy work with other types than string and number ?
             if (args.orderBy) {
