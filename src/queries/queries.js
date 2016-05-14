@@ -32,14 +32,10 @@ export function createQueryEndpoints (
     // query single model by id
     queryFields[modelName] = {
       type: clientTypes[modelName].objectType,
-      args: {
-        id: {
-          type: new GraphQLNonNull(GraphQLID)
-        }
-      },
+      args: clientTypes[modelName].uniqueQueryInputArguments,
       resolve: (_, args, { operation, rootValue: { currentUser, backend } }) => {
-        const { id } = fromGlobalId(args.id)
-        return backend.node(modelName, id, clientTypes[modelName].clientSchema, currentUser, operation)
+        return backend.allNodesByType(modelName, {filter: args}, clientTypes[modelName].clientSchema, currentUser, operation)
+        .then(({array}) => array[0])
       }
     }
   }

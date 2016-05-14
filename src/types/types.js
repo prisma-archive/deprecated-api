@@ -430,15 +430,6 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
 
   const viewerFields = {}
   for (const modelName in clientTypes) {
-    viewerFields[`${modelName}By`] = {
-      type: clientTypes[modelName].objectType,
-      args: clientTypes[modelName].uniqueQueryInputArguments,
-      resolve: (_, args, { operation, rootValue: { currentUser, backend } }) => {
-        return backend.allNodesByType(modelName, {filter: args}, clientTypes[modelName].clientSchema, currentUser, operation)
-        .then(({array}) => array[0])
-      }
-    }
-
     viewerFields[`all${modelName}s`] = {
       type: schemaType === 'RELAY'
         ? clientTypes[modelName].connectionType
