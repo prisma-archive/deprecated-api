@@ -14,9 +14,7 @@ import {
   GraphQLList
 } from 'graphql'
 
-import {
-  CustomGraphQLDateType,
-} from 'graphql-custom-datetype'
+import GraphQLDateTime from './GraphQLDateTime.js'
 
 import {
   connectionDefinitions,
@@ -173,7 +171,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
       case 'Float': return listify(GraphQLFloat)
       case 'GraphQLID': return listify(GraphQLID)
       case 'Password': return listify(GraphQLString)
-      case 'DateTime': return listify(CustomGraphQLDateType)
+      case 'DateTime': return listify(GraphQLDateTime)
       case 'Enum' :
         const enumTypeName = `${modelName}_${field.fieldName}`
         if (!enumTypes[enumTypeName]) {
