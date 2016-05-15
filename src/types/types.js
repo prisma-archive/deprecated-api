@@ -91,40 +91,17 @@ function injectRelationships (
             currentUser,
             allClientTypes[clientSchema.modelName].clientSchema)
           .then((array) => {
-            if (backend.type === 'sql') {
-              if (schemaType === 'RELAY') {
-                const edges = array.map((item) => ({node: item, cursor: item.id}))
-                // todo: replace with database cursor
-                const { pageInfo } = connectionFromArray(array, {})
-                return {
-                  edges,
-                  pageInfo,
-                  totalCount: array.length
-                }
-              } else {
-                return array
-              }
-            }
-
-            if (args.filter) {
-              args.filter = convertInputFieldsToInternalIds(args.filter, allClientTypes[typeIdentifier].clientSchema)
-              array = array.filter((x) =>
-                getFilterPairsFromFilterArgument(args.filter)
-                .every((filter) => x[filter.field] === filter.value))
-            }
-
             if (schemaType === 'RELAY') {
-              const { edges, pageInfo } = connectionFromArray(array, args)
+              const edges = array.map((item) => ({node: item, cursor: item.id}))
+              // todo: replace with database cursor
+              const { pageInfo } = connectionFromArray(array, {})
               return {
                 edges,
                 pageInfo,
                 totalCount: array.length
               }
             } else {
-              const skip = args.skip || 0
-              const take = args.take || array.length
-
-              return array.slice(skip, skip + take)
+              return array
             }
           }).catch(console.log)
         )
@@ -441,68 +418,21 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
         }
         return backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser, operation)
           .then(({array, hasMorePages}) => {
-            // sql: skip all filtering etc
-
-            if (backend.type === 'sql') {
-              if (schemaType === 'RELAY') {
-                const edges = array.map((item) => ({node: item, cursor: toGlobalId(args.orderBy || 'id_ASC', item.id)}))
-                const pageInfo = {
-                  hasNextPage: hasMorePages,
-                  hasPreviousPage: false,
-                  startCursor: edges[0] ? edges[0].cursor : null,
-                  endCursor: edges[edges.length-1] ? edges[edges.length-1].cursor : null
-                }
-                return {
-                  edges,
-                  pageInfo,
-                  totalCount: array.length
-                }
-              } else {
-                return array
-              }
-            }
-
-            if (args.filter) {
-              array = array.filter((x) =>
-                getFilterPairsFromFilterArgument(args.filter)
-                .every((filter) => x[filter.field] === filter.value))
-            }
-
-            // todo: how should orderBy work with other types than string and number ?
-            if (args.orderBy) {
-              const order = args.orderBy.indexOf('_DESC') > -1 ? 'DESC' : 'ASC'
-              const fieldName = args.orderBy.split(`_${order}`)[0]
-              const field = clientTypes[modelName].clientSchema.fields
-                .filter((field) => field.fieldName === fieldName)[0]
-              array = array.sort((a, b) => {
-                const [aValue, bValue] = (order === 'DESC' ? [a, b] : [b, a])
-                .map((object) => getValueOrDefault(object, field))
-
-                // strings are compared lexicographically. Nulls are sorted last
-                if (aValue === null) {
-                  return 1
-                }
-                if (bValue === null) {
-                  return 0
-                }
-                return ((typeof aValue) === 'string' && (typeof bValue) === 'string')
-                ? bValue.toLowerCase().localeCompare(aValue.toLowerCase())
-                : b[fieldName] - a[fieldName]
-              })
-            }
-
             if (schemaType === 'RELAY') {
-              const { edges, pageInfo } = connectionFromArray(array, args)
+              const edges = array.map((item) => ({node: item, cursor: toGlobalId(args.orderBy || 'id_ASC', item.id)}))
+              const pageInfo = {
+                hasNextPage: hasMorePages,
+                hasPreviousPage: false,
+                startCursor: edges[0] ? edges[0].cursor : null,
+                endCursor: edges[edges.length-1] ? edges[edges.length-1].cursor : null
+              }
               return {
                 edges,
                 pageInfo,
                 totalCount: array.length
               }
             } else {
-              const skip = args.skip || 0
-              const take = args.take || array.length
-
-              return array.slice(skip, skip + take)
+              return array
             }
           })
       }

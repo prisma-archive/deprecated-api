@@ -75,46 +75,23 @@ export default function (
         })
       }
 
-      if (backend.type === 'sql') {
-        const fromType = modelName
-        const fromFieldName = connectionField.fieldName
-        const fromId = args.fromId
-        const toType = connectionField.typeIdentifier
-        const toFieldName = connectionField.backRelationName
-        const toId = args.toId
+      const fromType = modelName
+      const fromFieldName = connectionField.fieldName
+      const fromId = args.fromId
+      const toType = connectionField.typeIdentifier
+      const toFieldName = connectionField.backRelationName
+      const toId = args.toId
 
-        return backend.removeRelation(fromType, fromFieldName, fromId, toType, toFieldName, toId)
-        .then(({fromNode, toNode}) => {
-          webhooksProcessor.nodeAddedToConnection(
-            toNode,
-            connectionField.typeIdentifier,
-            fromNode,
-            modelName,
-            connectionField.fieldName)
-          return {[getFieldNameFromModelName(modelName)]: fromNode}
-        })
-      }
-
-      return (backRelationExists()
-      ? removeBackRelation()
-      : Promise.resolve()
-      ).then(() =>
-        backend.removeRelation(
-          modelName,
-          args.fromId,
-          connectionField.fieldName,
-          connectionField.typeIdentifier,
-          args.toId))
+      return backend.removeRelation(fromType, fromFieldName, fromId, toType, toFieldName, toId)
       .then(({fromNode, toNode}) => {
-        webhooksProcessor.nodeRemovedFromConnection(
+        webhooksProcessor.nodeAddedToConnection(
           toNode,
           connectionField.typeIdentifier,
           fromNode,
           modelName,
           connectionField.fieldName)
-        return {fromNode, toNode}
+        return {[getFieldNameFromModelName(modelName)]: fromNode}
       })
-      .then(({fromNode, toNode}) => ({[getFieldNameFromModelName(modelName)]: fromNode}))
     }
   }
 

@@ -69,49 +69,16 @@ export default function (
         // add in corresponding connection
         Promise.all(getFieldsForBackRelations(node, clientTypes[modelName].clientSchema)
           .map((field) => {
-            const backRelationField =
-            clientTypes[field.typeIdentifier].clientSchema.fields
-            .filter((x) => x.fieldName === field.backRelationName)[0]
+            // todo: verify that this works!
+            const fromType = modelName
+            const fromFieldName = field.fieldName
+            const fromId = node.id
+            const toType = field.typeIdentifier
+            const toFieldName = field.backRelationName
+            const toId = node[`${field.fieldName}Id`]
 
-            if (backend.type === 'sql') {
-              // todo: verify that this works!
-
-              const fromType = modelName
-              const fromFieldName = field.fieldName
-              const fromId = node.id
-              const toType = field.typeIdentifier
-              const toFieldName = field.backRelationName
-              const toId = node[`${field.fieldName}Id`]
-
-              return backend.createRelation(fromType, fromFieldName, fromId, toType, toFieldName, toId)
-                .then(({fromNode, toNode}) => toNode)
-            }
-
-            if (backRelationField.isList) {
-              return backend.createRelation(
-                field.typeIdentifier,
-                node[`${field.fieldName}Id`],
-                field.backRelationName,
-                modelName,
-                node.id)
-              .then(({fromNode, toNode}) => fromNode)
-            } else {
-              return backend.node(
-                field.typeIdentifier,
-                node[`${field.fieldName}Id`],
-                clientTypes[field.typeIdentifier].clientSchema,
-                currentUser)
-              .then((relationNode) => {
-                relationNode[`${field.backRelationName}Id`] = node.id
-                return backend.updateNode(
-                  field.typeIdentifier,
-                  relationNode.id,
-                  relationNode,
-                  clientTypes[field.typeIdentifier].clientSchema,
-                  currentUser)
-              })
-            }
-
+            return backend.createRelation(fromType, fromFieldName, fromId, toType, toFieldName, toId)
+              .then(({fromNode, toNode}) => toNode)
           })
         )
         .then((connectedNodes) => ({connectedNodes, node}))
