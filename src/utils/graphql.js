@@ -21,7 +21,7 @@ export function isValidProjectName (name: string): boolean {
 }
 
 export function isScalar (typeIdentifier: string): boolean {
-  const scalarTypes = ['String', 'Int', 'Float', 'Boolean', 'GraphQLID', 'Password', 'Enum']
+  const scalarTypes = ['String', 'Int', 'Float', 'Boolean', 'GraphQLID', 'Password', 'Enum', 'DateTime']
   return scalarTypes.filter((x) => x === typeIdentifier).length > 0
 }
 
