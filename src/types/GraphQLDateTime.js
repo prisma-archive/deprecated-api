@@ -12,12 +12,7 @@ export function isValidDateTime (dateTime: string): boolean {
 }
 
 function coerceDate (value) {
-  if (!(value instanceof Date)) {
-    throw new Error('Field error: value is not an instance of Date')
-  }
-
   const result = moment(value).format(ISO8601)
-  console.log(result)
   if (!isValidDateTime(result)) {
     throw new Error('Field error: value is an invalid Date')
   }
