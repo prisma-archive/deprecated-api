@@ -3,7 +3,7 @@ import { GraphQLError } from 'graphql/error'
 import { Kind } from 'graphql/language'
 import moment from 'moment'
 
-const ISO8601 = 'yyyy-MM-ddTHH:mm:ss.SSSZ'
+const ISO8601 = 'YYYY-MM-ddTHH:mm:ss.SSSZ'
 
 export function isValidDateTime (dateTime: string): boolean {
   return (
