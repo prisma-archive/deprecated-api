@@ -51,38 +51,17 @@ export default function (
     mutateAndGetPayload: (args, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
       args = convertInputFieldsToInternalIds(args, clientTypes[modelName].clientSchema, ['fromId', 'toId'])
 
-      function backRelationExists () {
-        return connectionField.backRelationName &&
-              !clientTypes[connectionField.typeIdentifier].clientSchema.fields
-              .filter((x) => x.fieldName === connectionField.backRelationName)[0].isList
-      }
-
-      function removeBackRelation () {
-        return backend.node(
-          connectionField.typeIdentifier,
-          args.toId,
-          clientTypes[connectionField.typeIdentifier].clientSchema,
-          currentUser)
-        .then((toNode) => {
-          toNode[`${connectionField.backRelationName}Id`] = null
-
-          backend.updateNode(
-            connectionField.typeIdentifier,
-            args.toId,
-            toNode,
-            clientTypes[connectionField.typeIdentifier].clientSchema,
-            currentUser)
-        })
-      }
-
       const fromType = modelName
-      const fromFieldName = connectionField.fieldName
       const fromId = args.fromId
       const toType = connectionField.typeIdentifier
-      const toFieldName = connectionField.backRelationName
       const toId = args.toId
 
-      return backend.removeRelation(fromType, fromFieldName, fromId, toType, toFieldName, toId)
+      const relation = connectionField.relation
+
+      const aId = connectionField.relationSide === 'A' ? fromId : toId
+      const bId = connectionField.relationSide === 'B' ? fromId : toId
+
+      return backend.removeRelation(relation.id, aId, bId, fromType, fromId, toType, toId)
       .then(({fromNode, toNode}) => {
         webhooksProcessor.nodeAddedToConnection(
           toNode,
