@@ -14,10 +14,12 @@ import {
   cursorForObjectInConnection
 } from 'graphql-relay'
 
-import { 
+import {
   getFieldNameFromModelName,
   convertInputFieldsToInternalIds,
-  convertIdToExternal } from '../utils/graphql.js'
+  isScalar,
+  convertIdToExternal
+} from '../utils/graphql.js'
 
 import simpleMutation from './simpleMutation.js'
 
@@ -53,6 +55,15 @@ export default function (
     inputFields: clientTypes[modelName].updateMutationInputArguments,
     mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
       // todo: currently we don't handle setting a relation to null. Use removeXfromConnection instead
+      function getConnectionFields () {
+        return clientTypes[modelName].clientSchema.fields
+        .filter((field) => !isScalar(field.typeIdentifier) && node[`${field.fieldName}Id`] !== undefined)
+      }
+
+      function getScalarFields () {
+        return clientTypes[modelName].clientSchema.fields
+        .filter((field) => isScalar(field.typeIdentifier))
+      }
       node = convertInputFieldsToInternalIds(node, clientTypes[modelName].clientSchema)
 
       return backend.node(
@@ -65,8 +76,43 @@ export default function (
           return Promise.reject(`'No ${modelName}' with id '${node.id}' exists`)
         }
 
-        return backend.updateNode(modelName, node.id, node, clientTypes[modelName].clientSchema, currentUser)
-        .then((node) => {
+        getScalarFields().forEach((field) => {
+          if (node[field.fieldName] !== undefined) {
+            oldNode[field.fieldName] = node[field.fieldName]
+          }
+        })
+
+        console.log('NODE3', node, oldNode)
+
+        return backend.updateNode(modelName, node.id, oldNode, clientTypes[modelName].clientSchema, currentUser)
+        .then((dbNode) => {
+          return Promise.all(getConnectionFields()
+          .map((field) => {
+            // todo: verify that this works!
+            console.log('dbNode', dbNode)
+
+            const fromType = modelName
+            const fromId = dbNode.id
+            const toType = field.typeIdentifier
+            const toId = node[`${field.fieldName}Id`]
+
+            const relation = field.relation
+            console.log('RELATION :_) ', relation)
+            const aId = field.relationSide === 'A' ? fromId : toId
+            const bId = field.relationSide === 'B' ? fromId : toId
+            const fromField = field.relationSide
+
+            console.log('remove relation', relation, fromType, fromId, fromField)
+
+            return backend.removeAllRelationsFrom(relation.id, fromType, fromId, fromField)
+            .then(() => backend.createRelation(relation.id, aId, bId, fromType, fromId, toType, toId))
+            .then(({fromNode, toNode}) => toNode)
+          })
+        )
+        .then((connectedNodes) => ({connectedNodes, node: dbNode}))
+        })
+
+        .then(({node}) => {
           webhooksProcessor.nodeUpdated(convertIdToExternal(modelName, node), modelName)
           return {node}
         })

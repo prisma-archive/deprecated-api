@@ -44,7 +44,8 @@ import type {
   ClientTypes,
   AllTypes,
   GraphQLFields,
-  SchemaType
+  SchemaType,
+  Relation
 } from '../utils/definitions.js'
 
 function getFilterPairsFromFilterArgument (filter) {
@@ -111,14 +112,17 @@ function injectRelationships (
       } else {
         objectTypeField.type = allClientTypes[typeIdentifier].objectType
         objectTypeField.resolve = (obj, args, { operation, rootValue: { backend, currentUser } }) => (
-          obj[`${fieldName}Id`]
-          ? backend.node(
-              typeIdentifier,
-              obj[`${fieldName}Id`],
-              allClientTypes[typeIdentifier].clientSchema,
-              currentUser,
-              operation)
-          : null
+          backend.allNodesByRelation(
+            clientSchema.modelName,
+            obj.id,
+            fieldName,
+            args,
+            allClientTypes[typeIdentifier].clientSchema,
+            currentUser,
+            allClientTypes[clientSchema.modelName].clientSchema)
+          .then((array) => {
+            return array[0]
+          })
         )
       }
     })
@@ -137,7 +141,7 @@ function wrapWithNonNull (
     })
 }
 
-export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: SchemaType): AllTypes {
+export function createTypes (clientSchemas: [ClientSchema], relations: [Relation], schemaType: SchemaType): AllTypes {
   const enumTypes = {}
   function parseClientType (field: ClientSchemaField, modelName: string) {
     const listify = field.isList ? (type) => new GraphQLList(type) : (type) => type
@@ -342,6 +346,16 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
     })
   }
 
+  function patchRelations (clientSchema: ClientSchema) : ClientSchema {
+    clientSchema.fields.forEach((field) => {
+      if (field.relationId !== null) {
+        field.relation = relations.filter((relation) => relation.id === field.relationId)[0]
+      }
+    })
+
+    return clientSchema
+  }
+
   const clientTypes: ClientTypes = {}
 
   const NodeInterfaceType = new GraphQLInterfaceType({
@@ -376,6 +390,7 @@ export function createTypes (clientSchemas: Array<ClientSchema>, schemaType: Sch
       const updateMutationInputArguments = generateUpdateObjectMutationInputArguments(clientSchema)
       const queryFilterInputArguments = generateQueryFilterInputArguments(clientSchema)
       const uniqueQueryInputArguments = generateUniqueQueryInputArguments(clientSchema)
+      clientSchema = patchRelations(clientSchema)
       return {
         clientSchema,
         objectType,

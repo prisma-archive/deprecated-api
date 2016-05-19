@@ -55,52 +55,6 @@ export default function (
     mutateAndGetPayload: (args, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
       const node = convertInputFieldsToInternalIds(args, clientTypes[modelName].clientSchema)
 
-      function getBackRelationNodes (relationField, nodeToDelete) {
-        if (relationField.isList) {
-          return backend.allNodesByRelation(
-            modelName,
-            nodeToDelete.id,
-            relationField.fieldName,
-            null,
-            clientTypes[modelName].clientSchema,
-            currentUser)
-          .then((nodes) => nodes.filter((node) => node !== null))
-        } else {
-          if (!nodeToDelete[`${relationField.fieldName}Id`]) {
-            return Promise.resolve([])
-          }
-          return backend.node(
-            relationField.typeIdentifier,
-            nodeToDelete[`${relationField.fieldName}Id`],
-            clientTypes[relationField.typeIdentifier].clientSchema,
-            currentUser).then((node) => node ? [node] : [])
-        }
-      }
-
-      // todo: this disregards isRequired=true on related node
-      function setInlinedBackRelationsToNull (nodeToDelete) {
-        const relationFields = clientTypes[modelName].clientSchema.fields
-          .filter((field) => field.backRelationName)
-
-        if (relationFields.length === 0) {
-          return Promise.resolve()
-        }
-
-        return Promise.all(relationFields.map((field) =>
-          getBackRelationNodes(field, nodeToDelete)
-            .then((relationNodes) => {
-              return Promise.all(relationNodes.map((relationNode) => {
-                relationNode[`${field.backRelationName}Id`] = null
-                return backend.updateNode(
-                  field.typeIdentifier,
-                  relationNode.id,
-                  relationNode,
-                  clientTypes[field.typeIdentifier].clientSchema,
-                  currentUser)
-              }))
-            })))
-      }
-
       return backend.node(
           modelName,
           node.id,
@@ -110,7 +64,7 @@ export default function (
           if (nodeToDelete === null) {
             return Promise.reject(`'${modelName}' with id '${node.id}' does not exist`)
           }
-          
+
           return backend.deleteNode(modelName, node.id, clientTypes[modelName].clientSchema, currentUser)
             .then((node) => {
               webhooksProcessor.nodeDeleted(convertIdToExternal(modelName, node), modelName)
