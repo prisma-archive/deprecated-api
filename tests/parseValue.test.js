@@ -74,31 +74,26 @@ describe('parseValue', () => {
       assert.equal(isValidValueForType('Thu, 19 May 2016 21:09:24 +02:00', 'DateTime'), false),
       assert.equal(isValidValueForType('Thu, 19 May 2016', 'DateTime'), false),
 
-      assert.equal(isValidValueForType('2016', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-01', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-01-01', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-01-01T', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-05-19T17', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-05-19T17:09', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-05-19T17:09:24', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-01-01T17:09:24+02:00', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-05-19T17:09:24Z', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-05-19T17:09:24.1', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-05-19T17:09:24.12', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-05-19T17:09:24.123', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-05-19T17:09:24.1234', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-05-19T17:09:24.1Z', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-05-19T17:09:24.12Z', 'DateTime'), false),
-      assert.equal(isValidValueForType('2016-05-19T17:09:24.1234Z', 'DateTime'), false),
+      assert.equal(isValidValueForType('2016', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-01', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-01-01', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-01-01T', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-05-19T17', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-05-19T17:09', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-05-19T17:09:24', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-01-01T17:09:24+02:00', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-05-19T17:09:24Z', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-05-19T17:09:24.1', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-05-19T17:09:24.12', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-05-19T17:09:24.123', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-05-19T17:09:24.1234', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-05-19T17:09:24.1Z', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-05-19T17:09:24.12Z', 'DateTime'), true),
+      assert.equal(isValidValueForType('2016-05-19T17:09:24.1234Z', 'DateTime'), true),
 
       assert.equal(isValidValueForType('2016-05-19T17:09:24.123Z', 'DateTime'), true),
 
-      assert.equal(parseValue('2016', 'DateTime'), null),
-      assert.equal(parseValue('2016-05-19T17:09:24+02:00', 'DateTime'), null),
-
-      assert.equal(parseValue('2016Z', 'DateTime'), null),
-      assert.equal(parseValue('2016-05-19T17:09:24Z', 'DateTime'), null),
-      assert.equal(parseValue('2016-05-19T17:09:24.123Z', 'DateTime'), '2016-05-19T17:09:24.123+00:00')
+      assert.equal(parseValue('2016-05-19T17:09:24.123Z', 'DateTime'), '2016-05-19T17:09:24.123Z')
     ])
   })
 })
