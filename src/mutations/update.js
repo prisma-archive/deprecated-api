@@ -97,6 +97,7 @@ export default function (
             const toId = node[`${field.fieldName}Id`]
 
             const relation = field.relation
+
             const aId = field.relationSide === 'A' ? fromId : toId
             const bId = field.relationSide === 'B' ? fromId : toId
             const fromField = field.relationSide
