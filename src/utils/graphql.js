@@ -10,6 +10,8 @@ import {
   toGlobalId
 } from 'graphql-relay'
 
+import GraphQLDateTime, {isValidDateTime} from '../types/GraphQLDateTime'
+
 import deepcopy from 'deepcopy'
 
 export function isValidName (name: string): boolean {
@@ -107,7 +109,8 @@ export function parseValue (value: string, typeIdentifier: string): any {
     Float: () => isNaN(parseFloat(value)) ? null : parseFloat(value),
     GraphQLID: () => value,
     Password: () => value,
-    Enum: () => isValidName(value) ? value : null
+    Enum: () => isValidName(value) ? value : null,
+    DateTime: () => isValidDateTime(value) ? GraphQLDateTime.parseValue(value) : null
   }[typeIdentifier]()
 }
 
