@@ -61,13 +61,17 @@ export default function (
       args = convertInputFieldsToInternalIds(args, clientTypes[modelName].clientSchema, ['fromId', 'toId'])
 
       const fromType = modelName
-      const fromFieldName = connectionField.fieldName
       const fromId = args.fromId
       const toType = connectionField.typeIdentifier
-      const toFieldName = connectionField.backRelationName
       const toId = args.toId
 
-      return backend.createRelation(fromType, fromFieldName, fromId, toType, toFieldName, toId)
+      const relation = connectionField.relation
+      const aId = connectionField.relationSide === 'A' ? fromId : toId
+      const bId = connectionField.relationSide === 'B' ? fromId : toId
+
+      return backend.createRelation(relation.id, aId, bId, fromType, fromId, toType, toId)
+
+//      return backend.createRelation(fromType, fromFieldName, fromId, toType, toFieldName, toId)
       .then(({fromNode, toNode}) => {
         webhooksProcessor.nodeAddedToConnection(
           toNode,
