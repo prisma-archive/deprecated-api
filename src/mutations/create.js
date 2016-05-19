@@ -11,16 +11,15 @@ import type {
 
 import {
   mutationWithClientMutationId,
-  offsetToCursor,
-  toGlobalId
+  offsetToCursor
 } from 'graphql-relay'
 
 import {
   getFieldNameFromModelName,
-  getFieldsForBackRelations,
   patchConnectedNodesOnIdFields,
   convertInputFieldsToInternalIds,
-  convertIdToExternal
+  convertIdToExternal,
+  isScalar
 } from '../utils/graphql.js'
 
 import simpleMutation from './simpleMutation.js'
@@ -57,28 +56,57 @@ export default function (
     },
     inputFields: clientTypes[modelName].createMutationInputArguments,
     mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
+      
+      console.log('NODE', node)
+
+      function getConnectionFields () {
+        return clientTypes[modelName].clientSchema.fields
+        .filter((field) => !isScalar(field.typeIdentifier) && node[`${field.fieldName}Id`] !== undefined)
+      }
+
+      function getScalarFields () {
+        return clientTypes[modelName].clientSchema.fields
+        .filter((field) => isScalar(field.typeIdentifier))
+      }
+
       node = convertInputFieldsToInternalIds(node, clientTypes[modelName].clientSchema)
+
+      console.log('NODE1', node)
       return Promise.all(getFieldsOfType(node, clientTypes[modelName].clientSchema, 'Password').map((field) =>
         backend.hashAsync(node[field.fieldName]).then((hashed) => {
           node[field.fieldName] = hashed
         })
       ))
-      .then(() =>
-        backend.createNode(modelName, node, clientTypes[modelName].clientSchema, currentUser)
-      ).then((node) => (
+      .then(() => {
+        console.log('NODE2', node)
+        const newNode = {}
+        getScalarFields().forEach((field) => {
+          if (node[field.fieldName] !== undefined) {
+            newNode[field.fieldName] = node[field.fieldName]
+          }
+        })
+        console.log('NODE3', node, newNode)
+        return backend.createNode(modelName, newNode, clientTypes[modelName].clientSchema, currentUser)
+      }).then((dbNode) => (
         // add in corresponding connection
-        Promise.all(getFieldsForBackRelations(node, clientTypes[modelName].clientSchema)
+        Promise.all(getConnectionFields()
           .map((field) => {
             // todo: verify that this works!
+            console.log('dbNode', dbNode)
+
             const fromType = modelName
-            const fromFieldName = field.fieldName
-            const fromId = node.id
+            const fromId = dbNode.id
             const toType = field.typeIdentifier
-            const toFieldName = field.backRelationName
             const toId = node[`${field.fieldName}Id`]
 
-            return backend.createRelation(fromType, fromFieldName, fromId, toType, toFieldName, toId)
-              .then(({fromNode, toNode}) => toNode)
+            const relation = field.relation
+            console.log('RELATION :_) ', relation)
+
+            const aId = field.relationSide === 'A' ? fromId : toId
+            const bId = field.relationSide === 'B' ? fromId : toId
+            
+            return backend.createRelation(relation.id, aId, bId, fromType, fromId, toType, toId)
+            .then(({fromNode, toNode}) => toNode)
           })
         )
         .then((connectedNodes) => ({connectedNodes, node}))

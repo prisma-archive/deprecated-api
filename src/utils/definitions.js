@@ -34,6 +34,12 @@ export type ClientSchema = {
   fields: Array<ClientSchemaField>
 }
 
+export type Relation = {
+  id: string,
+  modelA: string,
+  modelB: string
+}
+
 export type permission = {
   id: string,
   userType: string,
@@ -49,6 +55,9 @@ export type ClientSchemaField = {
   fieldName: string,
   typeIdentifier: string,
   backRelationName: ?string,
+  relationId: ?string,
+  relation: ?Relation,
+  relationSide: ?string,
   enumValues: [string],
   isRequired: boolean,
   isList: boolean,
