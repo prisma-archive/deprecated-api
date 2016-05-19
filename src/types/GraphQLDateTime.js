@@ -14,21 +14,13 @@ export function isValidDateTime (dateTime: string): boolean {
 }
 
 function _parseAsMoment (value) {
-  return moment.utc(value, ISO8601, true)
-}
-
-function coerceDateTime (value) {
-  if (!isValidDateTime(value)) {
-    throw new Error('Field error: value is an invalid Date')
-  }
-
-  return _parseAsMoment(value).format(ISO8601)
+  return moment.utc(value, ISO8601)
 }
 
 export default new GraphQLScalarType({
   name: 'DateTime',
-  serialize: coerceDateTime,
-  parseValue: coerceDateTime,
+  serialize: (value) => { return value },
+  parseValue: (value) => { return value },
   parseLiteral (ast) {
     if (ast.kind !== Kind.STRING) {
       throw new GraphQLError('Query error: Can only parse strings to dates but got a: ' + ast.kind, [ast])
