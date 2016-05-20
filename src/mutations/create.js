@@ -87,9 +87,10 @@ export default function (
         })
         console.log('NODE3', node, newNode)
         return backend.createNode(modelName, newNode, clientTypes[modelName].clientSchema, currentUser)
-      }).then((dbNode) => (
+      }).then((dbNode) => {
+        node.id = dbNode.id
         // add in corresponding connection
-        Promise.all(getConnectionFields()
+        return Promise.all(getConnectionFields()
           .map((field) => {
             const fromType = modelName
             const fromId = dbNode.id
@@ -106,7 +107,7 @@ export default function (
           })
         )
         .then((connectedNodes) => ({connectedNodes, node}))
-      ))
+      })
       .then(({connectedNodes, node}) => {
         const patchedNode = patchConnectedNodesOnIdFields(node, connectedNodes, clientTypes[modelName].clientSchema)
         webhooksProcessor.nodeCreated(convertIdToExternal(modelName, patchedNode), modelName)
