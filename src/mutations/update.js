@@ -88,21 +88,15 @@ export default function (
         .then((dbNode) => {
           return Promise.all(getConnectionFields()
           .map((field) => {
-            // todo: verify that this works!
-            console.log('dbNode', dbNode)
-
             const fromType = modelName
             const fromId = dbNode.id
             const toType = field.typeIdentifier
             const toId = node[`${field.fieldName}Id`]
 
             const relation = field.relation
-            console.log('RELATION :_) ', relation)
             const aId = field.relationSide === 'A' ? fromId : toId
             const bId = field.relationSide === 'B' ? fromId : toId
             const fromField = field.relationSide
-
-            console.log('remove relation', relation, fromType, fromId, fromField)
 
             return backend.removeAllRelationsFrom(relation.id, fromType, fromId, fromField)
             .then(() => backend.createRelation(relation.id, aId, bId, fromType, fromId, toType, toId))
