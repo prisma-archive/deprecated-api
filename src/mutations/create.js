@@ -91,20 +91,16 @@ export default function (
         // add in corresponding connection
         Promise.all(getConnectionFields()
           .map((field) => {
-            // todo: verify that this works!
-            console.log('dbNode', dbNode)
-
             const fromType = modelName
             const fromId = dbNode.id
             const toType = field.typeIdentifier
             const toId = node[`${field.fieldName}Id`]
 
             const relation = field.relation
-            console.log('RELATION :_) ', relation)
 
             const aId = field.relationSide === 'A' ? fromId : toId
             const bId = field.relationSide === 'B' ? fromId : toId
-            
+
             return backend.createRelation(relation.id, aId, bId, fromType, fromId, toType, toId)
             .then(({fromNode, toNode}) => toNode)
           })
