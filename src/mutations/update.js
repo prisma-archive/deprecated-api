@@ -18,7 +18,8 @@ import {
   getFieldNameFromModelName,
   convertInputFieldsToInternalIds,
   isScalar,
-  convertIdToExternal
+  convertIdToExternal,
+  convertScalarListsToInternalRepresentation
 } from '../utils/graphql.js'
 
 import simpleMutation from './simpleMutation.js'
@@ -82,7 +83,7 @@ export default function (
           }
         })
 
-        console.log('NODE3', node, oldNode)
+        oldNode = convertScalarListsToInternalRepresentation(oldNode, clientTypes[modelName].clientSchema)
 
         return backend.updateNode(modelName, node.id, oldNode, clientTypes[modelName].clientSchema, currentUser)
         .then((dbNode) => {

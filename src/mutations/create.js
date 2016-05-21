@@ -19,7 +19,8 @@ import {
   patchConnectedNodesOnIdFields,
   convertInputFieldsToInternalIds,
   convertIdToExternal,
-  isScalar
+  isScalar,
+  convertScalarListsToInternalRepresentation
 } from '../utils/graphql.js'
 
 import simpleMutation from './simpleMutation.js'
@@ -56,9 +57,6 @@ export default function (
     },
     inputFields: clientTypes[modelName].createMutationInputArguments,
     mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
-      
-      console.log('NODE', node)
-
       function getConnectionFields () {
         return clientTypes[modelName].clientSchema.fields
         .filter((field) => !isScalar(field.typeIdentifier) && node[`${field.fieldName}Id`] !== undefined)
@@ -71,21 +69,21 @@ export default function (
 
       node = convertInputFieldsToInternalIds(node, clientTypes[modelName].clientSchema)
 
-      console.log('NODE1', node)
       return Promise.all(getFieldsOfType(node, clientTypes[modelName].clientSchema, 'Password').map((field) =>
         backend.hashAsync(node[field.fieldName]).then((hashed) => {
           node[field.fieldName] = hashed
         })
       ))
       .then(() => {
-        console.log('NODE2', node)
-        const newNode = {}
+        let newNode = {}
         getScalarFields().forEach((field) => {
           if (node[field.fieldName] !== undefined) {
             newNode[field.fieldName] = node[field.fieldName]
           }
         })
-        console.log('NODE3', node, newNode)
+
+        newNode = convertScalarListsToInternalRepresentation(newNode, clientTypes[modelName].clientSchema)
+
         return backend.createNode(modelName, newNode, clientTypes[modelName].clientSchema, currentUser)
       }).then((dbNode) => {
         node.id = dbNode.id
