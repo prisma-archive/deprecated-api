@@ -75,6 +75,52 @@ export function convertIdToExternal (typeIdentifier: string, node: Object): Obje
   return nodeWithExternalId
 }
 
+export function convertScalarListsToInternalRepresentation (node: Object, clientSchema: ClientSchema): Object {
+  const nodeClone = deepcopy(node)
+  clientSchema.fields.forEach((field) => {
+    if (field.isList && node[field.fieldName] !== undefined) {
+      if (Array.isArray(node[field.fieldName])) {
+        nodeClone[field.fieldName] = JSON.stringify(node[field.fieldName])
+      } else {
+        console.log(`Assert: expected ${node[field.fieldName]} to be array`)
+        nodeClone[field.fieldName] = '[]'
+      }
+    }
+  })
+
+  return nodeClone
+}
+
+export function convertScalarListsToExternalRepresentation (node: Object, clientSchema: ClientSchema): Object {
+  const nodeClone = deepcopy(node)
+  clientSchema.fields.forEach((field) => {
+    if (field.isList) {
+      if (
+        node[field.fieldName] === undefined ||
+        node[field.fieldName] === null ||
+        node[field.fieldName].trim() === '') {
+        nodeClone[field.fieldName] = []
+      } else {
+        nodeClone[field.fieldName] = JSON.parse(node[field.fieldName])
+      }
+    }
+  })
+
+  return nodeClone
+}
+
+export function ensureIsList (value) {
+  if (value === null || value === undefined) {
+    return []
+  }
+
+  if (value.indexOf('[') !== -1) {
+    return JSON.parse(value)
+  } else {
+    return [value]
+  }
+}
+
 export function patchConnectedNodesOnIdFields (
   node: Object, connectedNodes: [Object], clientSchema: ClientSchema
   ): Object {

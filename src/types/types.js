@@ -35,7 +35,8 @@ import {
 import {
   isScalar,
   convertInputFieldsToInternalIds,
-  externalIdFromQueryInfo
+  externalIdFromQueryInfo,
+  ensureIsList
 } from '../utils/graphql.js'
 
 import type {
@@ -178,18 +179,6 @@ export function createTypes (clientSchemas: [ClientSchema], relations: [Relation
         return null
       }
     }
-  }
-
-  function ensureIsList (value) {
-    if (value === null || value === undefined) {
-      return value
-    }
-
-    if (Array.isArray(value)) {
-      return value
-    }
-
-    return [value]
   }
 
   function generateDescription (field) {
