@@ -76,7 +76,6 @@ export default function (
       ))
       .then(() => {
         let newNode = {}
-
         getScalarFields().forEach((field) => {
           if (node[field.fieldName] !== undefined) {
             newNode[field.fieldName] = node[field.fieldName]
