@@ -85,30 +85,40 @@ function injectRelationships (
           ? allClientTypes[typeIdentifier].connectionType
           : new GraphQLList(allClientTypes[typeIdentifier].objectType)
         objectTypeField.args = allClientTypes[typeIdentifier].queryFilterInputArguments
-        objectTypeField.resolve = (obj, args, { operation, rootValue: { backend, currentUser } }) => (
-          backend.allNodesByRelation(
+
+        objectTypeField.resolve = (obj, args, { operation, rootValue: { currentUser, backend } }) => {
+          if (args.filter) {
+            args.filter = convertInputFieldsToInternalIds(args.filter, allClientTypes[typeIdentifier].clientSchema)
+          }
+
+          return backend.allNodesByRelation(
             clientSchema.modelName,
             obj.id,
-            fieldName,
+            clientSchemaField.fieldName,
             args,
             allClientTypes[typeIdentifier].clientSchema,
             currentUser,
             allClientTypes[clientSchema.modelName].clientSchema)
-          .then((array) => {
-            if (schemaType === 'RELAY') {
-              const edges = array.map((item) => ({node: item, cursor: item.id}))
-              // todo: replace with database cursor
-              const { pageInfo } = connectionFromArray(array, {})
-              return {
-                edges,
-                pageInfo,
-                totalCount: array.length
+            .then(({array, hasMorePages}) => {
+              if (schemaType === 'RELAY') {
+                const edges = array.map((item) => ({node: item, cursor: toGlobalId(args.orderBy || 'id_ASC', item.id)}))
+                const pageInfo = {
+                  hasNextPage: hasMorePages,
+                  hasPreviousPage: false,
+                  startCursor: edges[0] ? edges[0].cursor : null,
+                  endCursor: edges[edges.length-1] ? edges[edges.length-1].cursor : null
+                }
+                return {
+                  edges,
+                  pageInfo,
+                  totalCount: array.length
+                }
+              } else {
+                return array
               }
-            } else {
-              return array
-            }
-          }).catch(console.log)
-        )
+            })
+        }
+
       // 1:1 relationship
       } else {
         objectTypeField.type = allClientTypes[typeIdentifier].objectType
@@ -121,7 +131,7 @@ function injectRelationships (
             allClientTypes[typeIdentifier].clientSchema,
             currentUser,
             allClientTypes[clientSchema.modelName].clientSchema)
-          .then((array) => {
+          .then(({array}) => {
             return array[0]
           })
         )
