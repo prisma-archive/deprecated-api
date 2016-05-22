@@ -65,6 +65,8 @@ export default function (
         return clientTypes[modelName].clientSchema.fields
         .filter((field) => isScalar(field.typeIdentifier))
       }
+
+      const externalId = node.id
       node = convertInputFieldsToInternalIds(node, clientTypes[modelName].clientSchema)
 
       return backend.node(
@@ -74,7 +76,7 @@ export default function (
         currentUser)
       .then((oldNode) => {
         if (oldNode === null) {
-          return Promise.reject(`'No ${modelName}' with id '${node.id}' exists`)
+          return Promise.reject(`'No ${modelName}' with id '${externalId}' exists`)
         }
 
         getScalarFields().forEach((field) => {
