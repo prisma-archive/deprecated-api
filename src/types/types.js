@@ -131,11 +131,7 @@ function injectRelationships (
             allClientTypes[typeIdentifier].clientSchema,
             currentUser,
             allClientTypes[clientSchema.modelName].clientSchema)
-<<<<<<< efa52fe429155fe7fda49756a8a085e2d3f36739
           .then(({array}) => {
-=======
-          .then((array) => {
->>>>>>> relations staging
             return array[0]
           })
         )
