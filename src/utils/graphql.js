@@ -114,6 +114,7 @@ export function ensureIsList (value) {
     return []
   }
 
+  // todo: this check is too hacky
   if (value.indexOf('[') !== -1) {
     return JSON.parse(value)
   } else {
