@@ -87,27 +87,29 @@ export default function (
 
         oldNode = convertScalarListsToInternalRepresentation(oldNode, clientTypes[modelName].clientSchema)
 
-        return backend.updateNode(modelName, node.id, oldNode, clientTypes[modelName].clientSchema, currentUser)
+        return backend.beginTransaction()
+        .then(() => backend.updateNode(modelName, node.id, oldNode, clientTypes[modelName].clientSchema, currentUser))
         .then((dbNode) => {
           return Promise.all(getConnectionFields()
-          .map((field) => {
-            const fromType = modelName
-            const fromId = dbNode.id
-            const toType = field.typeIdentifier
-            const toId = node[`${field.fieldName}Id`]
+            .map((field) => {
+              const fromType = modelName
+              const fromId = dbNode.id
+              const toType = field.typeIdentifier
+              const toId = node[`${field.fieldName}Id`]
 
-            const relation = field.relation
+              const relation = field.relation
 
-            const aId = field.relationSide === 'A' ? fromId : toId
-            const bId = field.relationSide === 'B' ? fromId : toId
-            const fromField = field.relationSide
+              const aId = field.relationSide === 'A' ? fromId : toId
+              const bId = field.relationSide === 'B' ? fromId : toId
+              const fromField = field.relationSide
 
-            return backend.removeAllRelationsFrom(relation.id, fromType, fromId, fromField)
-            .then(() => backend.createRelation(relation.id, aId, bId, fromType, fromId, toType, toId))
-            .then(({fromNode, toNode}) => toNode)
-          })
-        )
-        .then((connectedNodes) => ({connectedNodes, node: dbNode}))
+              return backend.removeAllRelationsFrom(relation.id, fromType, fromId, fromField)
+              .then(() => backend.createRelation(relation.id, aId, bId, fromType, fromId, toType, toId))
+              .then(({fromNode, toNode}) => toNode)
+            })
+          )
+          .then(() => backend.commitTransaction())
+          .then((connectedNodes) => ({connectedNodes, node: dbNode}))
         })
 
         .then(({node}) => {

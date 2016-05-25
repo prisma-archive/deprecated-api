@@ -84,7 +84,8 @@ export default function (
 
         newNode = convertScalarListsToInternalRepresentation(newNode, clientTypes[modelName].clientSchema)
 
-        return backend.createNode(modelName, newNode, clientTypes[modelName].clientSchema, currentUser)
+        return backend.beginTransaction()
+        .then(() => backend.createNode(modelName, newNode, clientTypes[modelName].clientSchema, currentUser))
       }).then((dbNode) => {
         node.id = dbNode.id
         // add in corresponding connection
@@ -104,6 +105,7 @@ export default function (
             .then(({fromNode, toNode}) => toNode)
           })
         )
+        .then(() => backend.commitTransaction())
         .then((connectedNodes) => ({connectedNodes, node}))
       })
       .then(({connectedNodes, node}) => {
