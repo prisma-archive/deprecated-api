@@ -106,10 +106,11 @@ export default function (
               return backend.removeAllRelationsFrom(relation.id, fromType, fromId, fromField)
               .then(() => backend.createRelation(relation.id, aId, bId, fromType, fromId, toType, toId))
               .then(({fromNode, toNode}) => toNode)
-            })
-          )
-          .then(() => backend.commitTransaction())
-          .then((connectedNodes) => ({connectedNodes, node: dbNode}))
+            }))
+          .then((connectedNodes) => {
+            backend.commitTransaction()
+            return {connectedNodes, node: dbNode}
+          })
         })
 
         .then(({node}) => {

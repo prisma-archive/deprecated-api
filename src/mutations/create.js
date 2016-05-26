@@ -105,8 +105,10 @@ export default function (
             .then(({fromNode, toNode}) => toNode)
           })
         )
-        .then(() => backend.commitTransaction())
-        .then((connectedNodes) => ({connectedNodes, node}))
+        .then((connectedNodes) => {
+          backend.commitTransaction()
+          return {connectedNodes, node}
+        })
       })
       .then(({connectedNodes, node}) => {
         const patchedNode = patchConnectedNodesOnIdFields(node, connectedNodes, clientTypes[modelName].clientSchema)
