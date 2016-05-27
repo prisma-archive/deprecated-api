@@ -430,9 +430,6 @@ export function createTypes (clientSchemas: [ClientSchema], relations: [Relation
         : new GraphQLList(clientTypes[modelName].objectType),
       args: clientTypes[modelName].queryFilterInputArguments,
       resolve: (_, args, { operation, rootValue: { currentUser, backend } }) => {
-        if (args.filter) {
-          args.filter = convertInputFieldsToInternalIds(args.filter, clientTypes[modelName].clientSchema)
-        }
         return backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser, operation)
           .then(({array, hasMorePages}) => {
             if (schemaType === 'RELAY') {
