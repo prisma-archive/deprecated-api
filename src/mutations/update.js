@@ -79,6 +79,15 @@ export default function (
           return Promise.reject(`'No ${modelName}' with id '${externalId}' exists`)
         }
 
+        const changedFields = {}
+        getScalarFields().forEach((field) => {
+          if (node[field.fieldName] !== undefined && oldNode[field.fieldName] !== node[field.fieldName]) {
+            changedFields[field.fieldName] = true
+          } else {
+            changedFields[field.fieldName] = false
+          }
+        })
+
         getScalarFields().forEach((field) => {
           if (node[field.fieldName] !== undefined) {
             oldNode[field.fieldName] = node[field.fieldName]
@@ -114,7 +123,7 @@ export default function (
         })
 
         .then(({node}) => {
-          webhooksProcessor.nodeUpdated(convertIdToExternal(modelName, node), modelName)
+          webhooksProcessor.nodeUpdated(convertIdToExternal(modelName, node), modelName, changedFields)
           return {node}
         })
       })
