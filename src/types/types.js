@@ -196,7 +196,7 @@ export function createTypes (clientSchemas: [ClientSchema], relations: [Relation
   }
 
   function generateDescription (field) {
-    const defaultValue = field.defaultValue !== undefined ? `**Default value: '${field.defaultValue}'**` : ''
+    const defaultValue = hasDefaultValue(field) ? `**Default value: '${field.defaultValue}'**` : ''
     const description =
     // note: this is markdown syntax...
     `${defaultValue}
@@ -279,7 +279,7 @@ export function createTypes (clientSchemas: [ClientSchema], relations: [Relation
           ? new GraphQLNonNull(parseClientType(field, clientSchema.modelName))
           : parseClientType(field, clientSchema.modelName),
         description: generateDescription(field),
-        defaultValue: field.defaultValue !== undefined && allowDefaultValues ? field.defaultValue : null
+        defaultValue: hasDefaultValue(field) && allowDefaultValues ? field.defaultValue : null
       })
     )
 
@@ -290,7 +290,7 @@ export function createTypes (clientSchemas: [ClientSchema], relations: [Relation
       (field) => ({
         type: (field.isRequired && !forceFieldsOptional) ? new GraphQLNonNull(GraphQLID) : GraphQLID,
         description: generateDescription(field),
-        defaultValue: field.defaultValue !== undefined && allowDefaultValues ? field.defaultValue : null
+        defaultValue: hasDefaultValue(field) && allowDefaultValues ? field.defaultValue : null
       }))
 
     return mergeObjects(scalarArguments, oneToOneArguments)
@@ -314,7 +314,9 @@ export function createTypes (clientSchemas: [ClientSchema], relations: [Relation
       clientSchema,
       (field) => !parseClientType(field, clientSchema.modelName).__isRelation,
       (field) => parseClientType(field, clientSchema.modelName).__isRelation && !field.isList,
-      true
+      true,
+      false,
+      false
     )
   }
 
