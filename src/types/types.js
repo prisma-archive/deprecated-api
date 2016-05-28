@@ -242,6 +242,20 @@ export function createTypes (clientSchemas: [ClientSchema], relations: [Relation
     )
   }
 
+  function defaultValue (field) {
+    switch (field.typeIdentifier) {
+      case 'String': return field.defaultValue
+      case 'Boolean': return field.defaultValue === 'True' || field.defaultValue === 'true'
+      case 'Int': return parseInt(field.defaultValue)
+      case 'Float': return parseFloat(field.defaultValue)
+      case 'GraphQLID': return field.defaultValue
+      case 'Password': return field.defaultValue
+      case 'DateTime': return field.defaultValue
+      case 'Enum' : return field.defaultValue
+      default: return field.defaultValue
+    }
+  }
+
   function generateObjectMutationInputArguments (
     clientSchema: ClientSchema,
     scalarFilter: (field: ClientSchemaField) => boolean,
@@ -279,7 +293,7 @@ export function createTypes (clientSchemas: [ClientSchema], relations: [Relation
           ? new GraphQLNonNull(parseClientType(field, clientSchema.modelName))
           : parseClientType(field, clientSchema.modelName),
         description: generateDescription(field),
-        defaultValue: hasDefaultValue(field) && allowDefaultValues ? field.defaultValue : null
+        defaultValue: (hasDefaultValue(field) && allowDefaultValues) ? defaultValue(field) : null
       })
     )
 
@@ -290,7 +304,7 @@ export function createTypes (clientSchemas: [ClientSchema], relations: [Relation
       (field) => ({
         type: (field.isRequired && !forceFieldsOptional) ? new GraphQLNonNull(GraphQLID) : GraphQLID,
         description: generateDescription(field),
-        defaultValue: hasDefaultValue(field) && allowDefaultValues ? field.defaultValue : null
+        defaultValue: (hasDefaultValue(field) && allowDefaultValues) ? defaultValue(field) : null
       }))
 
     return mergeObjects(scalarArguments, oneToOneArguments)
