@@ -179,11 +179,15 @@ export function createTypes (clientSchemas: [ClientSchema], relations: [Relation
     }
   }
 
+  function hasDefaultValue (field) {
+    return field.defaultValue !== undefined && field.defaultValue !== null
+  }
+
   function getValueOrDefault (obj, field) {
     if (obj[field.fieldName] !== undefined && obj[field.fieldName] !== null) {
       return obj[field.fieldName]
     } else {
-      if (field.defaultValue !== undefined && field.defaultValue !== null) {
+      if (hasDefaultValue(field)) {
         return field.defaultValue
       } else {
         return null
@@ -246,12 +250,32 @@ export function createTypes (clientSchemas: [ClientSchema], relations: [Relation
     forceIdFieldOptional: boolean = false,
     allowDefaultValues: boolean = true
   ): GraphQLObjectType {
+    function isRequired (field) {
+      if (!field.isRequired) {
+        return false
+      }
+
+      if (field.fieldName === 'id' && forceIdFieldOptional) {
+        return false
+      }
+
+      if (field.fieldName !== 'id' && forceFieldsOptional) {
+        return false
+      }
+
+      if (hasDefaultValue(field)) {
+        return false
+      }
+
+      return true
+    }
+
     const scalarFields = clientSchema.fields.filter(scalarFilter)
     const scalarArguments = mapArrayToObject(
       scalarFields,
       (field) => field.fieldName,
       (field) => ({
-        type: (field.isRequired && !(forceFieldsOptional && (forceIdFieldOptional || field.fieldName !== 'id')))
+        type: isRequired(field)
           ? new GraphQLNonNull(parseClientType(field, clientSchema.modelName))
           : parseClientType(field, clientSchema.modelName),
         description: generateDescription(field),
