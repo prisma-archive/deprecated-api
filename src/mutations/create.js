@@ -111,9 +111,15 @@ export default function (
         })
       })
       .then(({connectedNodes, node}) => {
-        const patchedNode = patchConnectedNodesOnIdFields(node, connectedNodes, clientTypes[modelName].clientSchema)
-        webhooksProcessor.nodeCreated(convertIdToExternal(modelName, patchedNode), modelName)
-        return node
+        return backend.getNodeWithoutUserValidation(modelName, node.id)
+        .then((nodeWithAllFields) => {
+          const patchedNode = patchConnectedNodesOnIdFields(
+            nodeWithAllFields,
+            connectedNodes,
+            clientTypes[modelName].clientSchema)
+          webhooksProcessor.nodeCreated(convertIdToExternal(modelName, patchedNode), modelName)
+          return node
+        })
       })
       .then((node) => ({ node }))
     }

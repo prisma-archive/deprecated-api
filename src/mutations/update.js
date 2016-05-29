@@ -123,8 +123,11 @@ export default function (
         })
 
         .then(({node}) => {
-          webhooksProcessor.nodeUpdated(convertIdToExternal(modelName, node), modelName, changedFields)
-          return {node}
+          return backend.getNodeWithoutUserValidation(modelName, node.id)
+          .then((nodeWithAllFields) => {
+            webhooksProcessor.nodeUpdated(convertIdToExternal(modelName, nodeWithAllFields), modelName, changedFields)
+            return {node}
+          })
         })
       })
     }
