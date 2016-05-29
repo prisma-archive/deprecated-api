@@ -113,6 +113,16 @@ export default function (
       .then(({connectedNodes, node}) => {
         return backend.getNodeWithoutUserValidation(modelName, node.id)
         .then((nodeWithAllFields) => {
+          getScalarFields().forEach((field) => {
+            if (field.typeIdentifier === 'Boolean') {
+              if (nodeWithAllFields[field.fieldName] === 0) {
+                nodeWithAllFields[field.fieldName] = false
+              }
+              if (nodeWithAllFields[field.fieldName] === 1) {
+                nodeWithAllFields[field.fieldName] = true
+              }
+            }
+          })
           const patchedNode = patchConnectedNodesOnIdFields(
             nodeWithAllFields,
             connectedNodes,

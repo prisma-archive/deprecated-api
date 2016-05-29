@@ -125,6 +125,16 @@ export default function (
         .then(({node}) => {
           return backend.getNodeWithoutUserValidation(modelName, node.id)
           .then((nodeWithAllFields) => {
+            getScalarFields().forEach((field) => {
+              if (field.typeIdentifier === 'Boolean') {
+                if (nodeWithAllFields[field.fieldName] === 0) {
+                  nodeWithAllFields[field.fieldName] = false
+                }
+                if (nodeWithAllFields[field.fieldName] === 1) {
+                  nodeWithAllFields[field.fieldName] = true
+                }
+              }
+            })
             webhooksProcessor.nodeUpdated(convertIdToExternal(modelName, nodeWithAllFields), modelName, changedFields)
             return {node}
           })
