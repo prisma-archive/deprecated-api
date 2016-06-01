@@ -118,13 +118,21 @@ export default function (
             }))
           .then((connectedNodes) => {
             backend.commitTransaction()
-            return {connectedNodes, node: dbNode}
+            return {connectedNodes, node: dbNode, args: node}
           })
         })
 
-        .then(({node}) => {
+        .then(({node, args}) => {
           return backend.getNodeWithoutUserValidation(modelName, node.id)
           .then((nodeWithAllFields) => {
+            getConnectionFields().forEach((field) => {
+              const fieldName = `${field.fieldName}Id`
+              console.log(fieldName, args[fieldName])
+              if (args[fieldName]) {
+                nodeWithAllFields[fieldName] = args[fieldName]
+              }
+            })
+
             getScalarFields().forEach((field) => {
               if (field.typeIdentifier === 'Boolean') {
                 if (nodeWithAllFields[field.fieldName] === 0) {

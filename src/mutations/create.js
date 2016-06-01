@@ -113,6 +113,14 @@ export default function (
       .then(({connectedNodes, node}) => {
         return backend.getNodeWithoutUserValidation(modelName, node.id)
         .then((nodeWithAllFields) => {
+          getConnectionFields().forEach((field) => {
+            const fieldName = `${field.fieldName}Id`
+            console.log(fieldName, node[fieldName])
+            if (node[fieldName]) {
+              nodeWithAllFields[fieldName] = node[fieldName]
+            }
+          })
+
           getScalarFields().forEach((field) => {
             if (field.typeIdentifier === 'Boolean') {
               if (nodeWithAllFields[field.fieldName] === 0) {
