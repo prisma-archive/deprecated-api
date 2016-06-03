@@ -32,29 +32,58 @@ function getFieldsOfType (args, clientSchema, typeIdentifier) {
 export default function (
   viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string, schemaType: SchemaType
   ): GraphQLObjectType {
+  const outputFields = {
+    [getFieldNameFromModelName(modelName)]: {
+      type: clientTypes[modelName].objectType,
+      resolve: (root) => root.node
+    },
+    viewer: {
+      type: viewerType,
+      resolve: (_, args, { rootValue: { backend } }) => (
+        backend.user()
+      )
+    },
+    edge: {
+      type: clientTypes[modelName].edgeType,
+      resolve: (root, args, { rootValue: { currentUser, backend } }) =>
+      ({
+        cursor: offsetToCursor(0), // todo: do we sort ascending or descending?
+        node: root.node,
+        viewer: backend.user()
+      })
+    }
+  }
+
+  const oneConnections = clientTypes[modelName].clientSchema.fields
+  .filter((field) => !isScalar(field.typeIdentifier) && !field.isList)
+
+  oneConnections.forEach((connectionField) => {
+    if (!outputFields[connectionField.fieldName]) {
+      outputFields[connectionField.fieldName] = {
+        type: clientTypes[connectionField.typeIdentifier].objectType,
+        resolve: (root, args, { rootValue: { currentUser, backend } }) => {
+          console.log('connectionArg')
+          console.log(root)
+
+          return backend.allNodesByRelation(
+            connectionField.typeIdentifier,
+            root.node.id,
+            connectionField.fieldName,
+            {},
+            clientTypes[connectionField.typeIdentifier].clientSchema,
+            currentUser,
+            clientTypes[modelName].clientSchema)
+          .then(({array}) => {
+            return array[0]
+          })
+        }
+      }
+    }
+  })
+  
   const config = {
     name: `Create${modelName}`,
-    outputFields: {
-      [getFieldNameFromModelName(modelName)]: {
-        type: clientTypes[modelName].objectType,
-        resolve: (root) => root.node
-      },
-      viewer: {
-        type: viewerType,
-        resolve: (_, args, { rootValue: { backend } }) => (
-          backend.user()
-        )
-      },
-      edge: {
-        type: clientTypes[modelName].edgeType,
-        resolve: (root, args, { rootValue: { currentUser, backend } }) =>
-        ({
-          cursor: offsetToCursor(0), // todo: do we sort ascending or descending?
-          node: root.node,
-          viewer: backend.user()
-        })
-      }
-    },
+    outputFields: outputFields,
     inputFields: clientTypes[modelName].createMutationInputArguments,
     mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
       function getConnectionFields () {

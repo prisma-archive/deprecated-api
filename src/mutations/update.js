@@ -27,32 +27,59 @@ import simpleMutation from './simpleMutation.js'
 export default function (
   viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string, schemaType: SchemaType
   ): GraphQLObjectType {
+  const outputFields = {
+    [getFieldNameFromModelName(modelName)]: {
+      type: clientTypes[modelName].objectType,
+      resolve: (root) => root.node
+    },
+    viewer: {
+      type: viewerType,
+      resolve: (_, args, { rootValue: { backend } }) => (
+        backend.user()
+      )
+    },
+    edge: {
+      type: clientTypes[modelName].edgeType,
+      resolve: (root, args, { rootValue: { currentUser, backend } }) =>
+      backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser)
+      .then(({array}) => {
+        return ({
+          // todo: getting all nodes is not efficient
+          cursor: cursorForObjectInConnection(array, array.filter((x) => x.id === root.node.id)[0]),
+          node: root.node
+        })
+      })
+    }
+  }
+
+  const oneConnections = clientTypes[modelName].clientSchema.fields
+  .filter((field) => !isScalar(field.typeIdentifier) && !field.isList)
+
+  oneConnections.forEach((connectionField) => {
+    if (!outputFields[connectionField.fieldName]) {
+      outputFields[connectionField.fieldName] = {
+        type: clientTypes[connectionField.typeIdentifier].objectType,
+        resolve: (root, args, { rootValue: { currentUser, backend } }) => {
+
+          return backend.allNodesByRelation(
+            connectionField.typeIdentifier,
+            root.node.id,
+            connectionField.fieldName,
+            {},
+            clientTypes[connectionField.typeIdentifier].clientSchema,
+            currentUser,
+            clientTypes[modelName].clientSchema)
+          .then(({array}) => {
+            return array[0]
+          })
+        }
+      }
+    }
+  })
+
   const config = {
     name: `Update${modelName}`,
-    outputFields: {
-      [getFieldNameFromModelName(modelName)]: {
-        type: clientTypes[modelName].objectType,
-        resolve: (root) => root.node
-      },
-      viewer: {
-        type: viewerType,
-        resolve: (_, args, { rootValue: { backend } }) => (
-          backend.user()
-        )
-      },
-      edge: {
-        type: clientTypes[modelName].edgeType,
-        resolve: (root, args, { rootValue: { currentUser, backend } }) =>
-        backend.allNodesByType(modelName, args, clientTypes[modelName].clientSchema, currentUser)
-        .then(({array}) => {
-          return ({
-            // todo: getting all nodes is not efficient
-            cursor: cursorForObjectInConnection(array, array.filter((x) => x.id === root.node.id)[0]),
-            node: root.node
-          })
-        })
-      }
-    },
+    outputFields: outputFields,
     inputFields: clientTypes[modelName].updateMutationInputArguments,
     mutateAndGetPayload: (node, { rootValue: { currentUser, backend, webhooksProcessor } }) => {
       // todo: currently we don't handle setting a relation to null. Use removeXfromConnection instead
@@ -144,6 +171,7 @@ export default function (
               }
             })
             webhooksProcessor.nodeUpdated(convertIdToExternal(modelName, nodeWithAllFields), modelName, changedFields)
+
             return {node}
           })
         })
