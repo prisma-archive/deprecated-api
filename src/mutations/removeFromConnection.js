@@ -63,7 +63,7 @@ export default function (
 
       return backend.removeRelation(relation.id, aId, bId, fromType, fromId, toType, toId)
       .then(({fromNode, toNode}) => {
-        webhooksProcessor.nodeAddedToConnection(
+        webhooksProcessor.nodeRemovedFromConnection(
           toNode,
           connectionField.typeIdentifier,
           fromNode,
