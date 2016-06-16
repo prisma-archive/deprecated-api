@@ -24,6 +24,10 @@ import {
 
 import simpleMutation from './simpleMutation.js'
 
+function getFieldsOfType (args, clientSchema, typeIdentifier) {
+  return clientSchema.fields.filter((field) => field.typeIdentifier === typeIdentifier && args[field.fieldName])
+}
+
 export default function (
   viewerType: GraphQLObjectType, clientTypes: ClientTypes, modelName: string, schemaType: SchemaType
   ): GraphQLObjectType {
@@ -106,50 +110,55 @@ export default function (
           return Promise.reject(`'No ${modelName}' with id '${externalId}' exists`)
         }
 
-        const changedFields = {}
-        getScalarFields().forEach((field) => {
-          if (node[field.fieldName] !== undefined && oldNode[field.fieldName] !== node[field.fieldName]) {
-            changedFields[field.fieldName] = true
-          } else {
-            changedFields[field.fieldName] = false
-          }
-        })
+        return Promise.all(getFieldsOfType(node, clientTypes[modelName].clientSchema, 'Password').map((field) =>
+          backend.hashAsync(node[field.fieldName]).then((hashed) => {
+            node[field.fieldName] = hashed
+          })
+        )).then(() => {
+          const changedFields = {}
+          getScalarFields().forEach((field) => {
+            if (node[field.fieldName] !== undefined && oldNode[field.fieldName] !== node[field.fieldName]) {
+              changedFields[field.fieldName] = true
+            } else {
+              changedFields[field.fieldName] = false
+            }
+          })
 
-        getScalarFields().forEach((field) => {
-          if (node[field.fieldName] !== undefined) {
-            oldNode[field.fieldName] = node[field.fieldName]
-          }
-        })
+          getScalarFields().forEach((field) => {
+            if (node[field.fieldName] !== undefined) {
+              oldNode[field.fieldName] = node[field.fieldName]
+            }
+          })
 
-        oldNode = convertScalarListsToInternalRepresentation(oldNode, clientTypes[modelName].clientSchema)
+          oldNode = convertScalarListsToInternalRepresentation(oldNode, clientTypes[modelName].clientSchema)
 
-        return backend.beginTransaction()
-        .then(() => backend.updateNode(modelName, node.id, oldNode, clientTypes[modelName].clientSchema, currentUser))
-        .then((dbNode) => {
-          return Promise.all(getConnectionFields()
-            .map((field) => {
-              const fromType = modelName
-              const fromId = dbNode.id
-              const toType = field.typeIdentifier
-              const toId = node[`${field.fieldName}Id`]
+          return backend.beginTransaction()
+          .then(() => backend.updateNode(modelName, node.id, oldNode, clientTypes[modelName].clientSchema, currentUser))
+          .then((dbNode) => {
+            return Promise.all(getConnectionFields()
+              .map((field) => {
+                const fromType = modelName
+                const fromId = dbNode.id
+                const toType = field.typeIdentifier
+                const toId = node[`${field.fieldName}Id`]
 
-              const relation = field.relation
+                const relation = field.relation
 
-              const aId = field.relationSide === 'A' ? fromId : toId
-              const bId = field.relationSide === 'B' ? fromId : toId
-              const fromField = field.relationSide
+                const aId = field.relationSide === 'A' ? fromId : toId
+                const bId = field.relationSide === 'B' ? fromId : toId
+                const fromField = field.relationSide
 
-              return backend.removeAllRelationsFrom(relation.id, fromType, fromId, fromField)
-              .then(() => backend.createRelation(relation.id, aId, bId, fromType, fromId, toType, toId))
-              .then(({fromNode, toNode}) => toNode)
-            }))
-          .then((connectedNodes) => {
-            backend.commitTransaction()
-            return {connectedNodes, node: dbNode, args: node}
+                return backend.removeAllRelationsFrom(relation.id, fromType, fromId, fromField)
+                .then(() => backend.createRelation(relation.id, aId, bId, fromType, fromId, toType, toId))
+                .then(({fromNode, toNode}) => toNode)
+              }))
+            .then((connectedNodes) => {
+              backend.commitTransaction()
+              return {connectedNodes, node: dbNode, args: node, changedFields}
+            })
           })
         })
-
-        .then(({node, args}) => {
+        .then(({node, args, changedFields}) => {
           return backend.getNodeWithoutUserValidation(modelName, node.id)
           .then((nodeWithAllFields) => {
             getConnectionFields().forEach((field) => {
