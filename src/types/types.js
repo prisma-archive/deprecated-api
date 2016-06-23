@@ -167,6 +167,7 @@ export function createTypes (clientSchemas: [ClientSchema], relations: [Relation
       case 'Enum' :
         const enumTypeName = `${modelName}_${field.fieldName}`
         if (!enumTypes[enumTypeName]) {
+          console.log('creating new enum type', enumTypeName, field)
           enumTypes[enumTypeName] = new GraphQLEnumType({
             name: enumTypeName,
             values: mapArrayToObject(JSON.parse(field.enumValues || '[]'), (x) => x, (x) => ({value: x}))
