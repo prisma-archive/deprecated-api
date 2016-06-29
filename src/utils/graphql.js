@@ -82,8 +82,10 @@ export function convertScalarListsToInternalRepresentation (node: Object, client
       if (Array.isArray(node[field.fieldName])) {
         nodeClone[field.fieldName] = JSON.stringify(node[field.fieldName])
       } else {
-        console.log(`Assert: expected ${node[field.fieldName]} to be array`)
-        nodeClone[field.fieldName] = '[]'
+        if ((typeof nodeClone[field.fieldName]) === 'string' && nodeClone[field.fieldName].indexOf("]") < 0) {
+          console.log(`Assert: expected ${node[field.fieldName]} to be array`)
+          nodeClone[field.fieldName] = '[]'
+        }
       }
     }
   })
